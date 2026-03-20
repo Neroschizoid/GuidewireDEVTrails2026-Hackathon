@@ -1,5 +1,3 @@
-# AI-Powered Parametric Insurance for Gig Workers
-
 ---
 
 ##  1. Problem Overview
@@ -704,6 +702,13 @@ Our architecture is designed to be **scalable, modular, and API-driven**, enabli
 
 ---
 
+### Analytics Dashboard
+- Worker → Earnings, coverage, payouts  
+- Admin → Users, premiums, payouts, fraud  
+- Metrics → Trends, claims, risk  
+- Tech → React, Node.js, MongoDB  
+- Features → Filters, real-time, reports
+   
 ---
 
 ### System Architecture
