@@ -141,6 +141,20 @@ Our system uses **event-based triggers**, eliminating manual claims.
 - Curfew / strike detected  
 
 ---
+### ⚡ Parametric Trigger Logic
+
+```mermaid
+flowchart LR
+    A[Disruption Event<br>Rain / AQI / Curfew] --> B[Worker Active?]
+    B -->|No| X[No Payout]
+    B -->|Yes| C[Location Verified]
+
+    C -->|No| X
+    C -->|Yes| D[Income Impact Detected]
+
+    D -->|No| X
+    D -->|Yes| E[Trigger Payout]
+```
 
 ## 5. Weekly Dynamic Premium Model
 
@@ -355,8 +369,9 @@ Our system is designed to be **resilient against such adversarial behavior** by 
 
 # ✅ 3. Fraud Detection & Anti-Spoofing Diagram (MOST IMPORTANT)
 
-```markdown
+
 ### 🛡️ Anti-Spoofing & Fraud Detection Flow
+
 
 ```mermaid
 flowchart TD
@@ -374,6 +389,7 @@ flowchart TD
     H -->|Low| I[Approve Payout]
     H -->|Medium| J[Delayed Verification]
     H -->|High| K[Flag / Reject Claim]
+```
 
 ## 🔍 7.1 Differentiation Strategy  
 ### Genuine Worker vs Spoofed Actor
@@ -604,6 +620,7 @@ flowchart LR
     C --> G
 
     B --> H[Payment Gateway<br>Razorpay Sandbox]
+```
 
 ## 🪜 11. Development Plan
 
