@@ -641,7 +641,7 @@ Our architecture is designed to be **scalable, modular, and API-driven**, enabli
 
 ---
 
-### 🔹 Frontend (Mobile-First)
+###  Frontend (Mobile-First)
 - **Framework:** Flutter / React Native  
 - **Purpose:**
   - Worker onboarding  
@@ -650,7 +650,7 @@ Our architecture is designed to be **scalable, modular, and API-driven**, enabli
 
 ---
 
-### 🔹 Backend (Core Engine)
+###  Backend (Core Engine)
 - **Framework:** Node.js (Express) / Python (FastAPI)  
 - **Responsibilities:**
   - API orchestration  
@@ -660,7 +660,7 @@ Our architecture is designed to be **scalable, modular, and API-driven**, enabli
 
 ---
 
-### 🔹 AI/ML Layer
+###  AI/ML Layer
 - **Language:** Python  
 - **Libraries:** scikit-learn, pandas, NumPy  
 - **Use Cases:**
@@ -671,7 +671,7 @@ Our architecture is designed to be **scalable, modular, and API-driven**, enabli
 
 ---
 
-### 🔹 Database
+###  Database
 - **Primary DB:** PostgreSQL / MongoDB  
 - **Storage Includes:**
   - User profiles  
@@ -682,7 +682,7 @@ Our architecture is designed to be **scalable, modular, and API-driven**, enabli
 
 ---
 
-### 🔹 External APIs
+###  External APIs
 - Weather → OpenWeatherMap  
 - Pollution → CPCB AQI  
 - Events → GDELT  
@@ -690,13 +690,13 @@ Our architecture is designed to be **scalable, modular, and API-driven**, enabli
 
 ---
 
-### 🔹 Payments (Simulation)
+###  Payments (Simulation)
 - Razorpay (Test Mode) / Stripe Sandbox  
 - Used for demonstrating instant payouts  
 
 ---
 
-### 🔹 Infrastructure (Optional / Scalable)
+###  Infrastructure (Optional / Scalable)
 - Cloud: AWS / GCP / Azure  
 - Services:
   - Serverless functions (event triggers)  
