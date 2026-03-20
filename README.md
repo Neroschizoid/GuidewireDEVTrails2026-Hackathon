@@ -56,24 +56,23 @@ Currently, there is **no protection mechanism** for such uncontrollable disrupti
 
 ## ⚙️ 3. System Workflow
 ### 📊 System Workflow Diagram
-
 ```mermaid
 flowchart TD
     A[User Onboarding] --> B[Risk Profiling AI]
     B --> C[Weekly Policy Activation]
-    C --> D[Real-Time Monitoring]
+    C --> D[Real Time Monitoring]
 
     D --> E[Disruption Detected]
-    E --> F{Trigger Conditions Met?}
+    E --> F{Trigger Conditions Met}
 
     F -->|No| D
     F -->|Yes| G[Validation Layer]
 
-    G --> H{Valid Impact?}
+    G --> H{Valid Impact}
     H -->|No| D
     H -->|Yes| I[Automatic Payout]
 
-    I --> J[Update Records & Models]
+    I --> J[Update Records and Models]
 
 1. **User Onboarding**
    - Worker registers and connects (or simulates connection) to delivery platform  
