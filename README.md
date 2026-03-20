@@ -532,7 +532,7 @@ To ensure financial integrity and prevent duplicate payouts, our system implemen
 
 ---
 
-### 🔹 1. Event-Based Claim Uniqueness
+### 1. Event-Based Claim Uniqueness
 
 Each disruption is treated as a **single, uniquely identifiable event**.
 
@@ -547,12 +547,12 @@ Each disruption is treated as a **single, uniquely identifiable event**.
 
 ---
 
-### 🔹 Rule:
+### Rule:
 > **One worker can receive only one payout per event.**
 
 ---
 
-### 🔹 2. Idempotent Payment Logic
+### 2. Idempotent Payment Logic
 
 Our payment system is designed to be **idempotent**, meaning:
 
@@ -560,18 +560,18 @@ Our payment system is designed to be **idempotent**, meaning:
 
 ---
 
-### 🔹 How It Works
+### How It Works
 
 Before processing any payout, the system checks:
 ->(worker_id, event_id) → payment_status
 
 #### Cases:
-- ❌ If already paid → reject duplicate request  
-- ✅ If not paid → process payout  
+- x If already paid → reject duplicate request  
+- ✓ If not paid → process payout  
 
 ---
 
-### 🔹 Idempotency Key
+### Idempotency Key
 
 Each payout request uses a unique key:
 idempotency_key = worker_id + event_id
@@ -586,7 +586,7 @@ This ensures:
 
 ---
 
-### 🔹 3. Time Window Locking
+### 3. Time Window Locking
 
 Each disruption is mapped to a **fixed time window**.
 
@@ -598,7 +598,7 @@ Example:
 
 ---
 
-### 🔹 4. Atomic Transaction Handling
+### 4. Atomic Transaction Handling
 
 Payout processing is handled as an **atomic transaction**:
 
@@ -612,7 +612,7 @@ Payout processing is handled as an **atomic transaction**:
 
 ---
 
-### 🔹 5. Anti-Exploitation Safeguards
+### 5. Anti-Exploitation Safeguards
 
 - Event-based deduplication  
 - Cooldown period after payout  
@@ -620,13 +620,13 @@ Payout processing is handled as an **atomic transaction**:
 
 ---
 
-### 🧠 Key Principle
+### Key Principle
 
 > “Each disruption event results in at most one verified payout per worker — no duplicates, no retries, no exploitation.”
 
 ---
 
-## 🚀 Outcome
+## Outcome
 
 This approach ensures:
 - Financial safety  
@@ -635,7 +635,7 @@ This approach ensures:
 - Robustness under high-load or adversarial conditions  
 
 ---
-## 🧱 10. Tech Stack
+## 10. Tech Stack
 
 Our architecture is designed to be **scalable, modular, and API-driven**, enabling real-time monitoring, AI integration, and automated payouts.
 
@@ -706,7 +706,7 @@ Our architecture is designed to be **scalable, modular, and API-driven**, enabli
 
 ---
 
-### 🧱 System Architecture
+### System Architecture
 
 ```mermaid
 flowchart LR
@@ -729,7 +729,7 @@ flowchart LR
     B --> H[Payment Gateway Sandbox]
 ```
 
-## 🪜 11. Development Plan
+## 11. Development Plan
 
 Our development follows a **phased, modular approach** aligned with the challenge timeline.
 
