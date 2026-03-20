@@ -70,7 +70,7 @@ flowchart TD
 
     G --> H{Valid Impact?}
     H -->|No| D
-    H -->|Yes| I[Secure Payout (Idempotent)]
+    H -->|Yes| I[Secure Payout : Idempotent]
 
     I --> J[Update Records & Models]
 ```
