@@ -101,16 +101,6 @@ flowchart TD
    - System continuously tracks:
      - Weather (rain)  
      - AQI levels  
-     - Events (curfews, strikes)  
-
-5. **Trigger Detection**
-
-   - If disruption crosses threshold → event triggered
-
-4. **Real-Time Monitoring**
-   - System continuously tracks:
-     - Weather (rain)  
-     - AQI levels  
      - Events (curfews, strikes) 
 5. **Trigger Detection**
    - If disruption exceeds threshold → event triggered  
@@ -122,8 +112,20 @@ flowchart TD
      - Income impact   
 
 7. **Automatic Payout**
-   - Claim auto-triggered  
-   - Instant payout simulated 
+
+   - Once validation is complete, the system automatically initiates the payout process.
+
+   - The payout is governed by **event-based and idempotent logic**:
+     - Each disruption is assigned a unique **event_id**
+     - Each worker can receive **only one payout per event**
+
+   - Before processing payment, the system checks:
+     - Worker activity and eligibility  
+     - Whether payout for worker already exists  
+
+   - **Idempotency ensures:**
+     - Multiple trigger calls or retries do not result in duplicate payments  
+     - System remains safe under high load or network failures 
 
 ---
 
@@ -353,7 +355,7 @@ This enables:
 
 ---
 
-## 🛡️ 7. Adversarial Defense & Anti-Spoofing Strategy
+## 🛡️ 8. Adversarial Defense & Anti-Spoofing Strategy
 
 ### 🔹 Problem Context
 
@@ -524,6 +526,115 @@ Our architecture ensures:
 - Scalable, real-world reliability  
 
 ---
+## 9. Payment Safety & Idempotent Claim Processing
+
+To ensure financial integrity and prevent duplicate payouts, our system implements **idempotent payment logic** combined with **event-based claim control**.
+
+---
+
+### 🔹 1. Event-Based Claim Uniqueness
+
+Each disruption is treated as a **single, uniquely identifiable event**.
+
+#### Event ID Generation:
+->event_id = hash(location + time_window + disruption_type)
+#### Example:
+- Location: Zone A  
+- Time: 7 PM – 9 PM  
+- Event: Heavy Rain  
+
+→ `event_id = RAIN_ZONEA_7PM_9PM`
+
+---
+
+### 🔹 Rule:
+> **One worker can receive only one payout per event.**
+
+---
+
+### 🔹 2. Idempotent Payment Logic
+
+Our payment system is designed to be **idempotent**, meaning:
+
+> **Multiple identical requests will result in only one successful payout.**
+
+---
+
+### 🔹 How It Works
+
+Before processing any payout, the system checks:
+->(worker_id, event_id) → payment_status
+
+#### Cases:
+- ❌ If already paid → reject duplicate request  
+- ✅ If not paid → process payout  
+
+---
+
+### 🔹 Idempotency Key
+
+Each payout request uses a unique key:
+idempotency_key = worker_id + event_id
+
+
+This ensures:
+- Retry-safe payments  
+- No double payouts due to:
+  - Network retries  
+  - System failures  
+  - Multiple triggers  
+
+---
+
+### 🔹 3. Time Window Locking
+
+Each disruption is mapped to a **fixed time window**.
+
+- Even if the event is detected multiple times:
+  → Only one payout is allowed  
+
+Example:
+- Rain from 6–9 PM → single payout window  
+
+---
+
+### 🔹 4. Atomic Transaction Handling
+
+Payout processing is handled as an **atomic transaction**:
+
+1. Validate claim  
+2. Check idempotency key  
+3. Lock record  
+4. Process payment  
+5. Mark as completed  
+
+> Ensures no race conditions or duplicate payouts.
+
+---
+
+### 🔹 5. Anti-Exploitation Safeguards
+
+- Event-based deduplication  
+- Cooldown period after payout  
+- Cross-validation with activity + impact  
+
+---
+
+### 🧠 Key Principle
+
+> “Each disruption event results in at most one verified payout per worker — no duplicates, no retries, no exploitation.”
+
+---
+
+## 🚀 Outcome
+
+This approach ensures:
+- Financial safety  
+- Retry-safe system behavior  
+- Protection against duplicate and fraudulent payouts  
+- Robustness under high-load or adversarial conditions  
+
+---
 ## 🧱 10. Tech Stack
 
 Our architecture is designed to be **scalable, modular, and API-driven**, enabling real-time monitoring, AI integration, and automated payouts.
@@ -690,15 +801,7 @@ This architecture ensures:
 
 ---
 
-## 12. Key Innovations
 
-* Multi-factor parametric triggers
-* AI-driven personalized pricing
-* Earnings-based payout logic
-* Zero-touch claim system
-* Fraud-resistant architecture
-
----
 
 ## 🚀 12. Additional Innovations & Unique Value Propositions
 
