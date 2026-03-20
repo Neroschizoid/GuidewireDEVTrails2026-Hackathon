@@ -75,7 +75,7 @@ flowchart TD
     I --> J[Update Records & Models]
 ```
 
-1. **User Onboarding**
+### 1. **User Onboarding**
    - Worker registers and connects (or simulates connection) to delivery platform  
    - System captures:
      - Location (via platform tracking)  
