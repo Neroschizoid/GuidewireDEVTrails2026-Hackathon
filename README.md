@@ -81,7 +81,7 @@ flowchart TD
      - Location (via platform tracking)  
      - Historical activity (working hours, deliveries)  
 
-2. **Risk Profiling (AI)**
+### 2. **Risk Profiling (AI)**
 
    - System calculates risk score based on:
      - Location  
