@@ -131,16 +131,6 @@ flowchart TD
 ## ⚡ 4. Parametric Trigger Design
 
 Our system uses **event-based triggers**, eliminating manual claims.
-
-### 🎯 Trigger Logic
-> **Payout = Event + Active Worker + Verified Impact**
-
-### 📌 Example Triggers
-- Rainfall > 50 mm (2 hours)  
-- AQI > 300 (Hazardous)  
-- Curfew / strike detected  
-
----
 ### ⚡ Parametric Trigger Logic
 
 ```mermaid
@@ -155,6 +145,16 @@ flowchart LR
     D -->|No| X
     D -->|Yes| E[Trigger Payout]
 ```
+
+> **Payout = Event + Active Worker + Verified Impact**
+
+### 📌 Example Triggers
+- Rainfall > 50 mm (2 hours)  
+- AQI > 300 (Hazardous)  
+- Curfew / strike detected  
+
+---
+
 
 ## 5. Weekly Dynamic Premium Model
 
@@ -367,7 +367,6 @@ Our system is designed to be **resilient against such adversarial behavior** by 
 
 ---
 
-# ✅ 3. Fraud Detection & Anti-Spoofing Diagram (MOST IMPORTANT)
 
 
 ### 🛡️ Anti-Spoofing & Fraud Detection Flow
@@ -596,7 +595,7 @@ Our architecture is designed to be **scalable, modular, and API-driven**, enabli
 
 ---
 
-# ✅ 4. System Architecture Diagram (Put after Tech Stack)
+
 
 ```markdown
 ### 🧱 System Architecture
@@ -620,6 +619,7 @@ flowchart LR
     C --> G
 
     B --> H[Payment Gateway<br>Razorpay Sandbox]
+    
 ```
 
 ## 🪜 11. Development Plan
