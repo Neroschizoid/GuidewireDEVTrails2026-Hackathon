@@ -392,7 +392,7 @@ flowchart TD
     H -->|High| K[Flag / Reject Claim]
 ```
 
-## 🔍 8.1 Differentiation Strategy  
+## 8.1 Differentiation Strategy  
 ### Genuine Worker vs Spoofed Actor
 
 We move beyond location-based validation to **impact-based validation**.
