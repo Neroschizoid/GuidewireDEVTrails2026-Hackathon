@@ -595,9 +595,6 @@ Our architecture is designed to be **scalable, modular, and API-driven**, enabli
 
 ---
 
-
-
-```markdown
 ### 🧱 System Architecture
 
 ```mermaid
@@ -619,7 +616,6 @@ flowchart LR
     C --> G
 
     B --> H[Payment Gateway<br>Razorpay Sandbox]
-    
 ```
 
 ## 🪜 11. Development Plan
