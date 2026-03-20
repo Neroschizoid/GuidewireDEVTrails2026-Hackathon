@@ -392,29 +392,29 @@ flowchart TD
     H -->|High| K[Flag / Reject Claim]
 ```
 
-## 🔍 7.1 Differentiation Strategy  
+## 🔍 8.1 Differentiation Strategy  
 ### Genuine Worker vs Spoofed Actor
 
 We move beyond location-based validation to **impact-based validation**.
 
-### ✅ Genuine Worker
+### ✓ Genuine Worker
 - Actively engaged in deliveries  
 - Continuous movement along realistic routes  
 - Experiences drop in orders / earnings  
 - Matches environmental disruption patterns  
 
-### ❌ Spoofed Actor
+### ✘ Spoofed Actor
 - Static or unrealistic movement patterns  
 - No delivery activity despite claimed presence  
 - Sudden location jumps (teleportation)  
 - No measurable income loss  
 
-> 🎯 **Core Principle:**  
+> **Core Principle:**  
 > “Payouts are triggered by verified impact, not just presence.”
 
 ---
 
-## 📊 7.2 Multi-Signal Data Intelligence
+## 📊 8.2 Multi-Signal Data Intelligence
 
 To detect coordinated fraud, our system analyzes **multiple data layers beyond GPS**:
 
@@ -463,7 +463,7 @@ To detect syndicate behavior:
 
 ---
 
-## ⚖️ 7.3 UX Balance: Fairness for Honest Workers
+## ⚖️ 8.3 UX Balance: Fairness for Honest Workers
 
 We ensure that fraud detection does not penalize genuine users.
 
@@ -502,7 +502,7 @@ We ensure that fraud detection does not penalize genuine users.
 
 ---
 
-## 🔐 7.4 System Safeguards
+## 🔐 8.4 System Safeguards
 
 - One payout per event (event-based deduplication)  
 - Minimum time-in-zone requirement  
