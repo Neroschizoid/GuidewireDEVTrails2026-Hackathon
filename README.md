@@ -70,7 +70,7 @@ flowchart TD
 
     G --> H{Valid Impact?}
     H -->|No| D
-    H -->|Yes| I[Automatic Payout]
+    H -->|Yes| I[Secure Payout (Idempotent)]
 
     I --> J[Update Records & Models]
 ```
@@ -145,7 +145,7 @@ flowchart LR
     C -->|Yes| D[Income Impact Detected]
 
     D -->|No| X
-    D -->|Yes| E[Trigger Payout]
+    D -->|Yes| E[Trigger Valid]
 ```
 
 > **Payout = Event + Active Worker + Verified Impact**
@@ -726,7 +726,7 @@ flowchart LR
     E --> G
     C --> G
 
-    B --> H[Payment Gateway<br>Razorpay Sandbox]
+    B --> H[Payment Gateway Sandbox]
 ```
 
 ## 🪜 11. Development Plan
