@@ -54,8 +54,8 @@ Currently, there is **no protection mechanism** for such uncontrollable disrupti
 
 ---
 
-## ⚙️ 3. System Workflow
-### 📊 System Workflow Diagram
+## 3. System Workflow
+### System Workflow Diagram
 ```mermaid
 flowchart TD
     A[User Onboarding] --> B[Risk Profiling AI]
@@ -90,28 +90,28 @@ flowchart TD
      - Worker behavior profile 
       
 
-3. **Weekly Policy Purchase**
+### 3. **Weekly Policy Purchase**
 
 - Worker selects a coverage plan  
 - System calculates a dynamic weekly premium based on risk  
 - Policy is activated for a 7-day cycle 
 
 
-4. **Real-Time Monitoring**
+### 4. **Real-Time Monitoring**
    - System continuously tracks:
      - Weather (rain)  
      - AQI levels  
      - Events (curfews, strikes) 
-5. **Trigger Detection**
+### 5. **Trigger Detection**
    - If disruption exceeds threshold → event triggered  
 
-6. **Validation Layer**
+### 6. **Validation Layer**
    - Verify:
      - Worker activity  
      - Location authenticity  
      - Income impact   
 
-7. **Automatic Payout**
+### 7. **Automatic Payout**
 
    - Once validation is complete, the system automatically initiates the payout process.
 
