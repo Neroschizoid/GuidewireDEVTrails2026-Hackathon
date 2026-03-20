@@ -414,72 +414,72 @@ We move beyond location-based validation to **impact-based validation**.
 
 ---
 
-## 📊 8.2 Multi-Signal Data Intelligence
+## 8.2 Multi-Signal Data Intelligence
 
 To detect coordinated fraud, our system analyzes **multiple data layers beyond GPS**:
 
-### 📍 Location Signals
+### Location Signals
 - GPS coordinates  
 - Network-based location (cell tower / WiFi)  
 - IP-based geolocation  
 
 ---
 
-### 🚴 Activity Signals
+### Activity Signals
 - Delivery logs (orders accepted/completed)  
 - App active status  
 - Time spent in active sessions  
 
 ---
 
-### 📈 Behavioral Signals
+### Behavioral Signals
 - Historical work patterns  
 - Consistency of working hours  
 - Claim frequency patterns  
 
 ---
 
-### 📡 Movement Signals
+### Movement Signals
 - Route continuity (road-based movement)  
 - Speed consistency  
 - Detection of teleportation anomalies  
 
 ---
 
-### 🌍 Environmental Correlation
+### Environmental Correlation
 - Are multiple workers in same zone affected?  
 - Does disruption match actual API data?  
 
 ---
 
-### 🧠 Group-Level Intelligence (Advanced)
+### Group-Level Intelligence (Advanced)
 
 To detect syndicate behavior:
 - Identify clusters of users triggering claims simultaneously  
 - Detect identical patterns across multiple accounts  
 - Flag coordinated anomalies in the same region  
 
-> 📌 Helps identify organized fraud rings, not just individuals.
+> Helps identify organized fraud rings, not just individuals.
 
 ---
 
-## ⚖️ 8.3 UX Balance: Fairness for Honest Workers
+## 8.3 UX Balance: Fairness for Honest Workers
 
 We ensure that fraud detection does not penalize genuine users.
 
-### 🔹 Soft Flagging System
+### Soft Flagging System
 - Suspicious claims are **flagged, not rejected immediately**
 
 ---
 
-### 🔹 Confidence-Based Processing
+### Confidence-Based Processing
 - High-confidence claims → instant payout  
 - Medium-risk claims → delayed validation  
 - High-risk claims → flagged for deeper checks  
 
 ---
 
-### 🔹 Grace Handling (Network / Weather Issues)
+### Grace Handling (Network / Weather Issues)
 - Allow tolerance for:
   - Temporary GPS loss  
   - Network fluctuations  
@@ -487,14 +487,14 @@ We ensure that fraud detection does not penalize genuine users.
 
 ---
 
-### 🔹 Transparent Feedback
+### Transparent Feedback
 - Users are notified if:
   - Claim is under review  
   - Additional validation is required  
 
 ---
 
-### 🔹 Trust Score System
+### Trust Score System
 - Each worker has a dynamic trust score based on:
   - Past behavior  
   - Claim reliability  
@@ -502,7 +502,7 @@ We ensure that fraud detection does not penalize genuine users.
 
 ---
 
-## 🔐 8.4 System Safeguards
+## 8.4 System Safeguards
 
 - One payout per event (event-based deduplication)  
 - Minimum time-in-zone requirement  
@@ -511,13 +511,13 @@ We ensure that fraud detection does not penalize genuine users.
 
 ---
 
-## 🧠 Final Principle
+## Final Principle
 
 > “A disruption alone does not trigger a payout — only verified economic impact on an active, authentic worker does.”
 
 ---
 
-## 🚀 Outcome
+## Outcome
 
 Our architecture ensures:
 - Strong resistance to GPS spoofing  
