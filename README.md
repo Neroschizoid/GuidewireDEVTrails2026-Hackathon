@@ -16,7 +16,7 @@ Currently, there is **no protection mechanism** for such uncontrollable disrupti
 ### Persona: Food Delivery Rider (Zomato/Swiggy)
 
 * Works during **peak hours (lunch & dinner)**
-* Earns ₹500–₹1200 daily
+* Earns ₹800–₹1200 daily
 * Highly dependent on weather and local conditions
 
 ---
@@ -26,7 +26,7 @@ Currently, there is **no protection mechanism** for such uncontrollable disrupti
 * Time: 7–10 PM
 * Condition: Heavy rainfall
 * Impact: Orders drop / deliveries halted
-* Loss: ₹300–₹500
+* Loss: ₹150–₹300
 
 ---
 
@@ -34,15 +34,23 @@ Currently, there is **no protection mechanism** for such uncontrollable disrupti
 
 * Rider avoids working due to unsafe conditions
 * Reduced working hours
-* Loss: ₹200–₹400
+* Loss: ₹100–₹200
 
 ---
 
-### Scenario 3: Curfew / Zone Closure
+### Scenario 3: Curfew 
 
 * Area becomes inaccessible
 * No deliveries possible
-* Loss: Full shift income
+* Loss: ₹650–₹1000
+
+---
+
+### Scenario 4: Zone Closure
+
+* Forced to reallocate
+* Deliveries in unfamiliar places
+* Loss: ₹300–₹500
 
 ---
 
