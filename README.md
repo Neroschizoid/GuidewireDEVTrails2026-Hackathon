@@ -130,10 +130,10 @@ flowchart TD
 ---
 
 
-## ⚡ 4. Parametric Trigger Design
+## 4. Parametric Trigger Design
 
 Our system uses **event-based triggers**, eliminating manual claims.
-### ⚡ Parametric Trigger Logic
+### Parametric Trigger Logic
 
 ```mermaid
 flowchart LR
@@ -150,7 +150,7 @@ flowchart LR
 
 > **Payout = Event + Active Worker + Verified Impact**
 
-### 📌 Example Triggers
+### Example Triggers
 - Rainfall > 50 mm (2 hours)  
 - AQI > 300 (Hazardous)  
 - Curfew / strike detected  
@@ -160,7 +160,7 @@ flowchart LR
 
 ## 5. Weekly Dynamic Premium Model
 
-### 🔹 Plan Generation
+###  Plan Generation
 
    The system generates a plan using:
 
@@ -172,7 +172,7 @@ flowchart LR
 
 
 
-### 🔹 Coverage Definition
+### Coverage Definition
 
    Each policy clearly defines:
 
@@ -189,7 +189,7 @@ flowchart LR
 
 
 
-### 🔹 Dynamic Premium Calculation
+### Dynamic Premium Calculation
 
    The premium is calculated dynamically using:
 
@@ -204,7 +204,7 @@ flowchart LR
 
 
 
-### 🔹 Plan Personalization
+### Plan Personalization
 
    The system may recommend:
 
@@ -217,7 +217,7 @@ flowchart LR
 
 
 
-### 🔹 Policy Activation
+### Policy Activation
 
    - Worker confirms and pays the premium  
    - Policy becomes **active immediately or from next cycle**  
@@ -228,7 +228,7 @@ flowchart LR
 
 
 
-### 🔹 Policy Constraints
+### Policy Constraints
 
    - Valid only during the **selected 7-day period**  
    - Payouts only triggered if:
@@ -238,7 +238,7 @@ flowchart LR
 
 
 
-### 🔹 Transparency & Feedback
+### Transparency & Feedback
 
    The worker can view:
 
@@ -248,7 +248,7 @@ flowchart LR
    - Risk insights for the week  
 
 ---
-## 📱 6. Platform Choice: Mobile First
+## 6. Platform Choice: Mobile First
 
 We choose **Mobile** because:
 
@@ -259,17 +259,17 @@ We choose **Mobile** because:
   - Activity monitoring  
   - Background data collection  
 
-> 📌 A mobile-first approach ensures seamless, real-time interaction with the worker’s daily workflow.
+> A mobile-first approach ensures seamless, real-time interaction with the worker’s daily workflow.
 
 ---
 
-## 🤖 7. AI/ML Integration Strategy
+## 7. AI/ML Integration Strategy
 
 Our system leverages AI/ML to enhance **risk prediction, pricing accuracy, and fraud prevention**, making the insurance model adaptive and reliable.
 
 ---
 
-### 🔹 1. Risk Prediction Model
+### 1. Risk Prediction Model
 
 We use predictive models to estimate the **probability of disruption events** for a given worker.
 
@@ -282,7 +282,7 @@ We use predictive models to estimate the **probability of disruption events** fo
 #### Output:
 - Risk score (0–1 or low/medium/high)
 
-> 📌 This risk score forms the foundation for premium calculation and trigger sensitivity.
+> This risk score forms the foundation for premium calculation and trigger sensitivity.
 
 
 
