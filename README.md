@@ -286,7 +286,7 @@ We use predictive models to estimate the **probability of disruption events** fo
 
 
 
-### 🔹 2. Dynamic Premium Calculation
+### 2. Dynamic Premium Calculation
 
 AI models dynamically adjust weekly premiums based on predicted risk.
 
@@ -298,11 +298,11 @@ AI models dynamically adjust weekly premiums based on predicted risk.
 - Low predicted disruption → lower premium  
 - High predicted disruption → higher premium  
 
-> 📌 Ensures fair, personalized, and adaptive pricing.
+>  Ensures fair, personalized, and adaptive pricing.
 
 
 
-### 🔹 3. Earnings & Impact Estimation
+### 3. Earnings & Impact Estimation
 
 We model expected earnings using historical behavior:
 
@@ -313,7 +313,7 @@ We model expected earnings using historical behavior:
 - Enable **impact-based payouts** instead of fixed payouts  
 
 
-### 🔹 4. Fraud Detection & Anomaly Detection
+### 4. Fraud Detection & Anomaly Detection
 
 We use AI-based anomaly detection to identify suspicious behavior.
 
@@ -327,11 +327,11 @@ We use AI-based anomaly detection to identify suspicious behavior.
 - Rule-based + anomaly detection models  
 - Behavioral pattern analysis  
 
-> 📌 Helps detect GPS spoofing, duplicate claims, and system misuse.
+> Helps detect GPS spoofing, duplicate claims, and system misuse.
 
 
 
-### 🔹 5. Behavioral Profiling
+### 5. Behavioral Profiling
 
 Each worker is assigned a dynamic profile based on:
 
@@ -345,7 +345,7 @@ This enables:
 
 
 
-### 🔹 6. Continuous Learning (Future Scope)
+### 6. Continuous Learning (Future Scope)
 
 - Models improve over time using:
   - Claim outcomes  
@@ -355,9 +355,9 @@ This enables:
 
 ---
 
-## 🛡️ 8. Adversarial Defense & Anti-Spoofing Strategy
+## 8. Adversarial Defense & Anti-Spoofing Strategy
 
-### 🔹 Problem Context
+### Problem Context
 
 Parametric insurance systems are vulnerable to **coordinated fraud attacks**, where users spoof GPS locations to falsely appear inside disruption zones and trigger payouts.
 
@@ -371,7 +371,7 @@ Our system is designed to be **resilient against such adversarial behavior** by 
 
 
 
-### 🛡️ Anti-Spoofing & Fraud Detection Flow
+### Anti-Spoofing & Fraud Detection Flow
 
 
 ```mermaid
