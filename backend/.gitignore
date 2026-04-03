@@ -40,6 +40,13 @@ htmlcov/
 .idea/
 .vscode/
 
+# React frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+
 # OS files
 .DS_Store
 Thumbs.db

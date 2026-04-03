@@ -5,3 +5,4 @@ pytest
 httpx
 sqlalchemy
 psycopg2-binary
+joblib

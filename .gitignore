@@ -1,0 +1,62 @@
+# Root .gitignore for full-stack (backend + frontend + ml)
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.egg-info/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environments / secrets
+.env
+.env.*
+*.pem
+*.key
+*.crt
+
+# --- Local DB files ---
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+
+# Backend-specific DBs (keep broad patterns safe)
+**/dev.db
+**/test.db
+
+# --- Frontend (React/Vite) ---
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.*
+
+# --- ML (Python) ---
+ml/__pycache__/
+ml/data.csv
+ml/*.pkl
+ml/*.joblib
+ml/*.sav
+ml/*.model
+
+# --- Node (if any subprojects) ---
+**/node_modules/
+**/dist/
+

@@ -953,4 +953,40 @@ to create a **next-generation insurance model for the gig economy**.
 
 > Our solution transforms insurance from a reactive, manual process into a **proactive, automated safety net** that protects gig workers’ income in real time.
 
+---
+
+## React UI (Demo)
+
+This repo includes a React "premium dashboard" under `frontend/` that calls the FastAPI endpoints.
+
+1. Start the backend:
+   - Set `DATABASE_URL` for PostgreSQL (example):
+     `postgresql+psycopg2://postgres:postgres@localhost:5432/gig_insurance`
+   - Run:
+     `uvicorn app.main:app --reload`
+2. Start the frontend:
+   - Go to `frontend/`
+   - Run:
+     `npm install`
+     `npm run dev`
+
+The UI expects the API at `http://127.0.0.1:8000` by default (you can change it in the frontend code via `VITE_API_BASE_URL`).
+
+---
+
+## Run Backend (Runnable Defaults)
+
+This backend is runnable immediately using SQLite dev DB (no Postgres required) unless you set `DATABASE_URL`.
+
+From `backend/` folder:
+1. Start:
+   - `run_backend.cmd`
+2. Test health:
+   - `GET http://127.0.0.1:8000/`
+
+For PostgreSQL + Postman:
+1. Create DB `gig_insurance`
+2. Set `DATABASE_URL` to your Postgres connection string.
+3. Restart backend.
+
 

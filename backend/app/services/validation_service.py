@@ -36,3 +36,25 @@ def validate_for_payout(worker: WorkerDB, event: EventDB, db: Session) -> bool:
         return False
 
     return True
+
+
+def validate_eligibility_for_payout(worker: WorkerDB, event: EventDB, db: Session) -> bool:
+    """
+    Eligibility check for payouts that does NOT block already-processed payouts.
+    Idempotency is enforced in `process_payout` via the unique DB constraint.
+    """
+    if not worker.active:
+        return False
+
+    if worker.location != event.location:
+        return False
+
+    policy = db.scalar(select(PolicyDB).where(PolicyDB.worker_id == worker.id))
+    if policy is None or policy.status != "active":
+        return False
+
+    now = datetime.now(timezone.utc)
+    if not (_as_utc(policy.start_date) <= now <= _as_utc(policy.end_date)):
+        return False
+
+    return True

@@ -18,6 +18,14 @@ class RegisterWorkerResponse(BaseModel):
     active: bool
 
 
+class WorkerInfoResponse(BaseModel):
+    worker_id: str
+    name: str
+    location: str
+    income: float
+    active: bool
+
+
 class RiskRequest(BaseModel):
     worker_id: str
     rainfall: float = Field(ge=0, le=500)
@@ -26,6 +34,7 @@ class RiskRequest(BaseModel):
     peak: bool
     location_risk: float = Field(ge=0, le=1)
     hours: float = Field(ge=0, le=24)
+    base_price: float = Field(gt=0, default=20)
 
 
 class RiskResponse(BaseModel):

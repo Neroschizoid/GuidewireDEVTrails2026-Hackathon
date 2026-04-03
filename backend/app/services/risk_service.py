@@ -23,6 +23,9 @@ def calculate_risk(payload: RiskRequest, db: Session) -> RiskResponse:
         location_risk=payload.location_risk,
         income=worker.income,
         hours=payload.hours,
+        active=worker.active,
+        paid=False,
+        base_price=payload.base_price,
     )
     now = datetime.now(timezone.utc)
     db.merge(RiskProfileDB(

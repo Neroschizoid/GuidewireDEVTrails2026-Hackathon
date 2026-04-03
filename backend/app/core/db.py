@@ -9,7 +9,9 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg2://postgres:postgres@localhost:5432/gig_insurance",
+    # Default dev DB so the server is runnable without Postgres.
+    # For production/Postgres, set DATABASE_URL explicitly.
+    "sqlite:///./dev.db",
 )
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
