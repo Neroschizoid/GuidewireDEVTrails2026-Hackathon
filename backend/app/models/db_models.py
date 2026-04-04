@@ -17,6 +17,8 @@ class WorkerDB(Base):
     __tablename__ = "workers"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String, nullable=False)
     location: Mapped[str] = mapped_column(String, nullable=False, index=True)
     income: Mapped[float] = mapped_column(Float, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

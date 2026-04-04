@@ -17,6 +17,8 @@ export default function App() {
 
   const [workerForm, setWorkerForm] = useState({
     name: "",
+    email: "",
+    password: "",
     location: "",
     income: 1000,
   });
@@ -100,7 +102,7 @@ export default function App() {
   }, [auth]);
 
   const [authMode, setAuthMode] = useState("register");
-  const [loginWorkerIdInput, setLoginWorkerIdInput] = useState("");
+  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
 
   const riskPct = useMemo(() => {
     const v = Number(riskResult?.risk_score ?? 0);
@@ -168,7 +170,7 @@ export default function App() {
     setError(null);
     setApiStatus("Checking worker…");
     try {
-      const data = await apiGet(`/api/v1/workers/${loginWorkerIdInput}`);
+      const data = await apiPost("/api/v1/workers/login", loginForm);
       const newAuth = {
         worker_id: data.worker_id,
         name: data.name,
@@ -366,6 +368,24 @@ export default function App() {
                     />
                   </div>
                   <div className="field">
+                    <label>Email</label>
+                    <input
+                      type="email"
+                      value={workerForm.email}
+                      onChange={(e) => setWorkerForm((p) => ({ ...p, email: e.target.value }))}
+                      placeholder="e.g., asha@example.com"
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Password</label>
+                    <input
+                      type="password"
+                      value={workerForm.password}
+                      onChange={(e) => setWorkerForm((p) => ({ ...p, password: e.target.value }))}
+                      placeholder="Min 6 chars"
+                    />
+                  </div>
+                  <div className="field">
                     <label>Location (zone)</label>
                     <input
                       value={workerForm.location}
@@ -385,11 +405,21 @@ export default function App() {
               ) : (
                 <div className="formGrid" style={{ marginTop: 10 }}>
                   <div className="field">
-                    <label>Worker ID</label>
+                    <label>Email</label>
                     <input
-                      value={loginWorkerIdInput}
-                      onChange={(e) => setLoginWorkerIdInput(e.target.value)}
-                      placeholder="Paste worker_id"
+                      type="email"
+                      value={loginForm.email}
+                      onChange={(e) => setLoginForm((p) => ({ ...p, email: e.target.value }))}
+                      placeholder="Worker email"
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Password</label>
+                    <input
+                      type="password"
+                      value={loginForm.password}
+                      onChange={(e) => setLoginForm((p) => ({ ...p, password: e.target.value }))}
+                      placeholder="Password"
                     />
                   </div>
                 </div>
@@ -399,7 +429,7 @@ export default function App() {
                 <button
                   className="btn"
                   onClick={authMode === "register" ? handleRegister : handleLogin}
-                  disabled={authMode === "login" && !loginWorkerIdInput}
+                  disabled={authMode === "login" && (!loginForm.email || !loginForm.password)}
                 >
                   {authMode === "register" ? "Register & Login" : "Login"}
                 </button>

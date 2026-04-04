@@ -25,6 +25,9 @@ def validate_for_payout(worker: WorkerDB, event: EventDB, db: Session) -> bool:
     if policy is None or policy.status != "active":
         return False
 
+    if event.type == "none":
+        return False
+
     now = datetime.now(timezone.utc)
     if not (_as_utc(policy.start_date) <= now <= _as_utc(policy.end_date)):
         return False
@@ -51,6 +54,9 @@ def validate_eligibility_for_payout(worker: WorkerDB, event: EventDB, db: Sessio
 
     policy = db.scalar(select(PolicyDB).where(PolicyDB.worker_id == worker.id))
     if policy is None or policy.status != "active":
+        return False
+
+    if event.type == "none":
         return False
 
     now = datetime.now(timezone.utc)

@@ -94,8 +94,8 @@ export default function GWApp() {
   const [theme, setTheme] = useState(() => localStorage.getItem("gw_theme_v1") || "neon");
 
   const [authMode, setAuthMode] = useState("register");
-  const [registerForm, setRegisterForm] = useState({ name: "", location: "", income: 1000 });
-  const [loginId, setLoginId] = useState("");
+  const [registerForm, setRegisterForm] = useState({ name: "", email: "", password: "", location: "", income: 1000 });
+  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
 
   const [apiStatus, setApiStatus] = useState(null);
   const [error, setError] = useState(null);
@@ -205,7 +205,7 @@ export default function GWApp() {
     setError(null);
     setApiStatus("Logging in…");
     try {
-      const data = await apiGet(`/api/v1/workers/${loginId}`);
+      const data = await apiPost("/api/v1/workers/login", loginForm);
       setAuth({
         worker_id: data.worker_id,
         name: data.name,
@@ -335,6 +335,14 @@ export default function GWApp() {
                     <input className="gwInput" value={registerForm.name} onChange={(e) => setRegisterForm((p) => ({ ...p, name: e.target.value }))} />
                   </label>
                   <label className="gwLabel">
+                    Email
+                    <input className="gwInput" type="email" value={registerForm.email} onChange={(e) => setRegisterForm((p) => ({ ...p, email: e.target.value }))} />
+                  </label>
+                  <label className="gwLabel">
+                    Password
+                    <input className="gwInput" type="password" value={registerForm.password} onChange={(e) => setRegisterForm((p) => ({ ...p, password: e.target.value }))} />
+                  </label>
+                  <label className="gwLabel">
                     Location (zone)
                     <input className="gwInput" value={registerForm.location} onChange={(e) => setRegisterForm((p) => ({ ...p, location: e.target.value }))} />
                   </label>
@@ -348,17 +356,21 @@ export default function GWApp() {
                     />
                   </label>
                 </div>
-                <button className="gwPrimaryBtn" onClick={handleRegister} disabled={!registerForm.name || !registerForm.location}>
+                <button className="gwPrimaryBtn" onClick={handleRegister} disabled={!registerForm.name || !registerForm.location || !registerForm.email || !registerForm.password}>
                   Register & Activate
                 </button>
               </>
             ) : (
               <>
                 <label className="gwLabel" style={{ marginTop: 12 }}>
-                  Worker ID
-                  <input className="gwInput" value={loginId} onChange={(e) => setLoginId(e.target.value)} placeholder="Paste worker_id" />
+                  Email
+                  <input className="gwInput" type="email" value={loginForm.email} onChange={(e) => setLoginForm((p) => ({ ...p, email: e.target.value }))} placeholder="user@example.com" />
                 </label>
-                <button className="gwPrimaryBtn" onClick={handleLogin} disabled={!loginId}>
+                <label className="gwLabel" style={{ marginTop: 8 }}>
+                  Password
+                  <input className="gwInput" type="password" value={loginForm.password} onChange={(e) => setLoginForm((p) => ({ ...p, password: e.target.value }))} placeholder="Password" />
+                </label>
+                <button className="gwPrimaryBtn" style={{ marginTop: 16 }} onClick={handleLogin} disabled={!loginForm.email || !loginForm.password}>
                   Login & Load
                 </button>
               </>

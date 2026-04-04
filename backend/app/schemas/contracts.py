@@ -8,8 +8,15 @@ from pydantic import BaseModel, Field
 
 class RegisterWorkerRequest(BaseModel):
     name: str = Field(min_length=1)
+    email: str = Field(min_length=3)
+    password: str = Field(min_length=6)
     location: str = Field(min_length=1)
     income: float = Field(gt=0)
+
+
+class LoginWorkerRequest(BaseModel):
+    email: str
+    password: str
 
 
 class RegisterWorkerResponse(BaseModel):
@@ -21,6 +28,7 @@ class RegisterWorkerResponse(BaseModel):
 class WorkerInfoResponse(BaseModel):
     worker_id: str
     name: str
+    email: str
     location: str
     income: float
     active: bool

@@ -9,6 +9,8 @@ from typing import Optional
 class Worker:
     id: str
     name: str
+    email: str
+    hashed_password: str
     location: str
     income: float
     active: bool = True

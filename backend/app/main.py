@@ -27,6 +27,17 @@ app.add_middleware(
 def health() -> dict:
     return {"status": "ok"}
 
+from fastapi import Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from app.core.db import get_db
+
+
+@app.get("/test-db")
+def test_db(db: Session = Depends(get_db)):
+    result = db.execute(text("SELECT 1")).fetchone()
+    return {"result": result[0]}
+
 
 app.include_router(worker.router, prefix="/api/v1", tags=["worker"])
 app.include_router(risk.router, prefix="/api/v1", tags=["risk"])
