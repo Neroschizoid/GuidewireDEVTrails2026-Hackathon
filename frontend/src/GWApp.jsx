@@ -625,7 +625,7 @@ export default function GWApp() {
                   <div className="gwInlineStats" style={{ marginTop: 12 }}>
                     <div className="gwStat">
                       <div className="gwStatLabel">RISK SCORE</div>
-                      <div className="gwStatValue">{triggerResult ? triggerResult.risk_score.toFixed(2) : "—"}</div>
+                      <div className="gwStatValue">{triggerResult ? triggerResult.risk_score.toFixed(2) : riskResult ? riskResult.risk_score.toFixed(2) : "—"}</div>
                     </div>
                     <div className="gwStat">
                       <div className="gwStatLabel">RAINFALL</div>
@@ -634,6 +634,13 @@ export default function GWApp() {
                     <div className="gwStat">
                       <div className="gwStatLabel">AQI</div>
                       <div className="gwStatValue">{triggerResult ? triggerResult.aqi.toFixed(0) : "—"}</div>
+                    </div>
+                    <div className="gwStat">
+                      <div className="gwStatLabel">TEMP / PEAK</div>
+                      <div className="gwStatValue">
+                        {triggerResult ? `${triggerResult.temperature.toFixed(1)}° ${triggerResult.peak_status ? "⚡" : "○"}` : 
+                         riskResult ? `${riskResult.temperature.toFixed(1)}° ${riskResult.peak_status ? "⚡" : "○"}` : "—"}
+                      </div>
                     </div>
                   </div>
                   {auth?.active_policy ? (
