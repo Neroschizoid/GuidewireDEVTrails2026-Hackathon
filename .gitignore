@@ -21,6 +21,7 @@ htmlcov/
 dist/
 build/
 *.egg
+backend/tests/
 
 # ─── Virtual Environments ─────────────────────────────────────
 .venv/
