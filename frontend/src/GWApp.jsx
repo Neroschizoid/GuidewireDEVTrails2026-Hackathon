@@ -638,8 +638,8 @@ export default function GWApp() {
                     <div className="gwStat">
                       <div className="gwStatLabel">TEMP / PEAK</div>
                       <div className="gwStatValue">
-                        {triggerResult ? `${triggerResult.temperature.toFixed(1)}° ${triggerResult.peak_status ? "⚡" : "○"}` : 
-                         riskResult ? `${riskResult.temperature.toFixed(1)}° ${riskResult.peak_status ? "⚡" : "○"}` : "—"}
+                        {triggerResult ? `${(triggerResult.temperature ?? 25).toFixed(1)}° ${(triggerResult.peak_status ?? 0) ? "⚡" : "○"}` : 
+                         riskResult ? `${(riskResult.temperature ?? 25).toFixed(1)}° ${(riskResult.peak_status ?? 0) ? "⚡" : "○"}` : "—"}
                       </div>
                     </div>
                   </div>

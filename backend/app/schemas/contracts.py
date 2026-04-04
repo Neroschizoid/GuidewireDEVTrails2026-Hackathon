@@ -171,6 +171,8 @@ class CheckTriggerResponse(BaseModel):
     risk_score: float
     rain: float
     aqi: float
+    temperature: float = 25.0
+    peak_status: int = 0
     triggered: bool
     trigger_type: Optional[str] = None   # "rain" | "aqi" | None
     payout: Optional[float] = None
