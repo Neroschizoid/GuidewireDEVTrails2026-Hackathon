@@ -29,8 +29,10 @@ def run_inference(
     paid: bool = False,
     base_price: float = 20.0,
 ) -> InferenceOutput:
-    ml_api_url = os.getenv("ML_API_URL")
-    if ml_api_url:
+    # default to false if not set or empty
+    ml_api_url = os.getenv("ML_API_URL", "false").lower()
+    
+    if ml_api_url != "false" and ml_api_url != "":
         payload = {
             "rainfall": rainfall,
             "aqi": aqi,
@@ -58,6 +60,7 @@ def run_inference(
             pass
 
     model = load_model()
+    # The model trained on: rainfall, aqi, temperature, peak_hour, location_risk
     features = preprocess_features(rainfall, aqi, temperature, peak, location_risk)
     risk_score = model.predict(features)
     premium_quote = round(base_price * (1.0 + risk_score), 2)

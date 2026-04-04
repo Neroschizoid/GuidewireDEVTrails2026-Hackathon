@@ -10,3 +10,6 @@ python-dotenv
 passlib[bcrypt]
 bcrypt
 PyJWT
+pandas
+scikit-learn
+joblib

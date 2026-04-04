@@ -77,17 +77,21 @@ def check_triggers(
 
     # ── 2. Fetch weather (or simulate) ──────────────────────────
     if payload.simulate:
-        rainfall, aqi = 100.0, 350.0
+        rainfall, aqi, temp = 100.0, 350.0, 32.0
     else:
-        rainfall, aqi = fetch_live_weather(payload.lat, payload.lon)
+        rainfall, aqi, temp = fetch_live_weather(payload.lat, payload.lon)
 
     # ── 3. ML risk model ─────────────────────────────────────────
+    from app.services.weather_service import get_peak_hour
+    peak = get_peak_hour()
+    loc_risk = 0.6  # static as requested
+
     inference = run_inference(
         rainfall=rainfall,
         aqi=aqi,
-        temperature=payload.temperature,
-        peak=payload.peak,
-        location_risk=payload.location_risk,
+        temperature=temp,
+        peak=bool(peak),
+        location_risk=loc_risk,
         income=current_worker.income,
         hours=payload.hours,
         active=current_worker.active,
@@ -176,6 +180,8 @@ def check_triggers(
         risk_score=round(inference.risk_score, 4),
         rain=rainfall,
         aqi=aqi,
+        temperature=temp,
+        peak_status=peak,
         triggered=triggered,
         trigger_type=trigger_type_fired,
         payout=payout_amount,

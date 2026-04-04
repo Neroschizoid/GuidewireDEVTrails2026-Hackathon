@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.ml.inference import run_inference
 from app.models.db_models import RiskProfileDB, WorkerDB
 from app.schemas.contracts import RiskRequest, RiskResponse
-from app.services.weather_service import fetch_live_weather
+from app.services.weather_service import fetch_live_weather, get_peak_hour
 
 
 def calculate_risk(payload: RiskRequest, db: Session) -> RiskResponse:
@@ -16,14 +16,17 @@ def calculate_risk(payload: RiskRequest, db: Session) -> RiskResponse:
     if worker is None:
         raise HTTPException(status_code=404, detail="Worker not found")
 
-    rainfall, aqi = fetch_live_weather(payload.lat, payload.lon)
+    # Fetch Rainfall, AQI, and Temperature
+    rainfall, aqi, temp = fetch_live_weather(payload.lat, payload.lon)
+    peak = get_peak_hour()
+    loc_risk = 0.6  # static as requested
 
     output = run_inference(
         rainfall=rainfall,
         aqi=aqi,
-        temperature=payload.temperature,
-        peak=payload.peak,
-        location_risk=payload.location_risk,
+        temperature=temp,
+        peak=bool(peak),
+        location_risk=loc_risk,
         income=worker.income,
         hours=payload.hours,
         active=worker.active,
@@ -55,5 +58,7 @@ def calculate_risk(payload: RiskRequest, db: Session) -> RiskResponse:
         fraud_flag=output.fraud_flag,
         recommended_tier=rec_tier,
         recommended_tier_name=rec_name,
+        temperature=temp,
+        peak_status=peak,
         timestamp=now,
     )

@@ -71,6 +71,8 @@ class RiskResponse(BaseModel):
     fraud_flag: bool
     recommended_tier: Optional[int] = None
     recommended_tier_name: Optional[str] = None
+    temperature: float = 25.0
+    peak_status: int = 0
     timestamp: datetime
 
 
