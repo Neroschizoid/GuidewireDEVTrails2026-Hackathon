@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.models.db_models import WorkerDB
 
-SECRET_KEY = os.getenv("SECRET_KEY", "parametric_dev_super_secret_key_123!")
+SECRET_KEY = os.getenv("JWT_SECRET")
 ALGORITHM = "HS256"
 
 # Hardcoded for business parameters. Access: 15 mins. Refresh: 7 days.

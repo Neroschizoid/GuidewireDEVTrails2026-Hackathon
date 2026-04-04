@@ -69,6 +69,8 @@ class RiskResponse(BaseModel):
     premium_quote: float
     estimated_loss: float
     fraud_flag: bool
+    recommended_tier: Optional[int] = None
+    recommended_tier_name: Optional[str] = None
     timestamp: datetime
 
 

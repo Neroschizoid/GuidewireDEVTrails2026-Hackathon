@@ -311,6 +311,31 @@ export default function GWApp() {
     }
   }
 
+  async function handleRunML() {
+    if (!auth) return;
+    setError(null);
+    setApiStatus("Analyzing current risk profile...");
+    try {
+      const payload = {
+        worker_id: auth.worker_id,
+        lat: geoCoords.lat,
+        lon: geoCoords.lon,
+        temperature: mlForm.temperature,
+        peak: mlForm.peak,
+        location_risk: mlForm.location_risk,
+        hours: mlForm.hours,
+        base_price: mlForm.base_price,
+      };
+      const data = await apiPost("/api/v1/risk/calculate", payload);
+      setRiskResult(data);
+      setApiStatus(null);
+    } catch (e) {
+      setError(String(e?.message || e));
+      setApiStatus(null);
+    }
+  }
+
+
   // ─── Session Lifecycle ───────────────────────────────────────
   async function goOnline() {
     if (!auth) return;
@@ -546,6 +571,49 @@ export default function GWApp() {
                   </div>
                 </div>
 
+                <div className="gwCard" style={{ marginTop: 16, background: "rgba(124,92,255,.05)", border: "1px solid rgba(124,92,255,.2)" }}>
+                  <div className="gwCardHead">
+                    <div>
+                      <div className="gwCardTitle" style={{ color: "#7c5cff" }}>Shield Advisor</div>
+                      <div className="gwSubTitle">ML-powered risk assessment & recommendation</div>
+                    </div>
+                    <div className="gwShield">🧪</div>
+                  </div>
+                  
+                  {riskResult ? (
+                    <div style={{ marginTop: 12 }}>
+                      <div className="gwRecBox">
+                        <div style={{ fontSize: 13, marginBottom: 8 }}>
+                          Current Risk Score: <strong style={{ color: "#24d6ff" }}>{(riskResult.risk_score * 100).toFixed(1)}%</strong>
+                        </div>
+                        <div style={{ fontSize: 14 }}>
+                          Recommendation: Our model suggests the <strong style={{ color: "#7c5cff" }}>{riskResult.recommended_tier_name}</strong> for optimal coverage.
+                        </div>
+                      </div>
+                      <div className="gwRow" style={{ marginTop: 12 }}>
+                        <button className="gwPrimaryBtn" style={{ marginTop: 0 }} onClick={() => {
+                          setSelectedShopTier(riskResult.recommended_tier);
+                          setTab("store");
+                        }}>
+                          Get Protected
+                        </button>
+                        <button className="gwSecondaryBtn" onClick={handleRunML}>
+                          Re-scan Risk
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 12 }}>
+                      <div className="gwMuted" style={{ fontSize: 13, marginBottom: 12 }}>
+                        Analyze your current environment (weather, location, hours) to find the best protection tier.
+                      </div>
+                      <button className="gwPrimaryBtn" onClick={handleRunML} style={{ marginTop: 0, background: "linear-gradient(90deg, #7c5cff, #ff4d8d)" }}>
+                        Run ML Risk Scan
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <div className="gwCard gwGlow" style={{ marginTop: 16 }}>
                   <div className="gwCardHead">
                     <div>
@@ -755,6 +823,16 @@ export default function GWApp() {
                         style={{ borderColor: selectedShopTier === t.p_id ? "rgba(36,214,255,.40)" : "rgba(255,255,255,.10)" }}
                       >
                         {t.popular ? <div className="gwBadge">MOST POPULAR</div> : null}
+                        {riskResult?.recommended_tier === t.p_id ? (
+                          <div className="gwBadge" style={{ 
+                            right: t.popular ? 140 : 12, 
+                            background: "rgba(124,92,255,.15)", 
+                            color: "#7c5cff", 
+                            borderColor: "rgba(124,92,255,.3)" 
+                          }}>
+                            RECOMMENDED
+                          </div>
+                        ) : null}
                         <div className="gwTierCardHead">
                           <div>
                             <div className="gwTierCardName">{t.name}</div>

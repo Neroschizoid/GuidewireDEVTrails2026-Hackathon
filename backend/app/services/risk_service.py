@@ -37,11 +37,23 @@ def calculate_risk(payload: RiskRequest, db: Session) -> RiskResponse:
         timestamp=now,
     ))
     db.commit()
+    # recommendation logic: 0-0.44 -> Basic (1), 0.45-0.74 -> Pro (2), 0.75+ -> Elite (3)
+    rec_tier = 1
+    rec_name = "Basic Shield"
+    if output.risk_score >= 0.75:
+        rec_tier = 3
+        rec_name = "Elite Armor"
+    elif output.risk_score >= 0.45:
+        rec_tier = 2
+        rec_name = "Pro Armor"
+
     return RiskResponse(
         worker_id=payload.worker_id,
         risk_score=output.risk_score,
         premium_quote=output.premium_quote,
         estimated_loss=output.estimated_loss,
         fraud_flag=output.fraud_flag,
+        recommended_tier=rec_tier,
+        recommended_tier_name=rec_name,
         timestamp=now,
     )
