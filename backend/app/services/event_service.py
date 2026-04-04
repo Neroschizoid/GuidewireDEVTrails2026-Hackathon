@@ -10,6 +10,7 @@ from app.models.db_models import EventDB, WorkerDB
 from app.schemas.contracts import TriggerEventRequest, TriggerEventResponse
 from app.services.payout_service import process_payout
 from app.services.validation_service import validate_for_payout
+from app.services.weather_service import fetch_live_weather
 
 
 def _infer_event_type(rainfall: float, aqi: float, force_event_type: str | None) -> str:
@@ -23,16 +24,17 @@ def _infer_event_type(rainfall: float, aqi: float, force_event_type: str | None)
 
 
 def trigger_event(payload: TriggerEventRequest, db: Session) -> TriggerEventResponse:
-    event_type = _infer_event_type(payload.rainfall, payload.aqi, payload.force_event_type)
-    severity = "high" if payload.rainfall >= 80 or payload.aqi >= 400 else "medium"
+    rainfall, aqi = fetch_live_weather(payload.lat, payload.lon)
+    event_type = _infer_event_type(rainfall, aqi, payload.force_event_type)
+    severity = "high" if rainfall >= 80 or aqi >= 400 else "medium"
 
     event = EventDB(
         id=str(uuid.uuid4()),
         type=event_type,
         severity=severity,
         location=payload.location,
-        rainfall=payload.rainfall,
-        aqi=payload.aqi,
+        rainfall=rainfall,
+        aqi=aqi,
         timestamp=datetime.now(timezone.utc),
     )
     db.add(event)
@@ -48,7 +50,7 @@ def trigger_event(payload: TriggerEventRequest, db: Session) -> TriggerEventResp
             continue
 
         # Deterministic payout rule for event-based compensation.
-        amount = max((payload.rainfall * 1.2) + (payload.aqi * 0.2), 0.0)
+        amount = max((rainfall * 1.2) + (aqi * 0.2), 0.0)
         result = process_payout(worker=worker, event=event, amount=amount, db=db)
         if result.status == "processed":
             processed += 1

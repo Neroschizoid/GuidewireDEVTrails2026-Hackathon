@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.endpoints import event, payout, policy, risk, worker
+from app.api.v1.endpoints import event, payment, payout, policy, risk, worker
 from app.core.db import Base, engine
 
 
@@ -44,3 +44,4 @@ app.include_router(risk.router, prefix="/api/v1", tags=["risk"])
 app.include_router(policy.router, prefix="/api/v1", tags=["policy"])
 app.include_router(event.router, prefix="/api/v1", tags=["event"])
 app.include_router(payout.router, prefix="/api/v1", tags=["payout"])
+app.include_router(payment.router, prefix="/api/v1", tags=["payment"])

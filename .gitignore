@@ -1,12 +1,14 @@
-# Root .gitignore for full-stack (backend + frontend + ml)
+# Root .gitignore — Parametric Shield (backend + frontend + ml)
 
-# --- OS / editor ---
+# ─── OS / Editor ──────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+*.swp
+*.swo
 
-# --- Python ---
+# ─── Python ───────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.pyd
@@ -16,47 +18,78 @@ __pycache__/
 .coverage
 .coverage.*
 htmlcov/
+dist/
+build/
+*.egg
 
-# Virtual environments
+# ─── Virtual Environments ─────────────────────────────────────
 .venv/
 venv/
 env/
 ENV/
+.conda/
 
-# Environments / secrets
+# ─── Secrets / Environment Files ──────────────────────────────
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 *.crt
+secrets.json
 
-# --- Local DB files ---
+# ─── JWT / Security ───────────────────────────────────────────
+# Never commit secret keys or token logs
+*_secret*
+*_token*
+jwt_*.txt
+
+# ─── Local Database Files ─────────────────────────────────────
 *.db
 *.sqlite
 *.sqlite3
 *.sqlite-wal
 *.sqlite-shm
-
-# Backend-specific DBs (keep broad patterns safe)
 **/dev.db
 **/test.db
 
-# --- Frontend (React/Vite) ---
+# ─── Frontend (React/Vite) ────────────────────────────────────
 frontend/node_modules/
 frontend/dist/
 frontend/build/
 frontend/.env
 frontend/.env.*
 
-# --- ML (Python) ---
+# ─── ML Artifacts ─────────────────────────────────────────────
 ml/__pycache__/
 ml/data.csv
 ml/*.pkl
 ml/*.joblib
 ml/*.sav
 ml/*.model
+ml/*.h5
+ml/*.pt
+ml/*.onnx
 
-# --- Node (if any subprojects) ---
+# ─── Node (any subproject) ────────────────────────────────────
 **/node_modules/
 **/dist/
+**/.next/
+**/out/
 
+# ─── Logs ─────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Coverage ─────────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ─── Misc ─────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.orig
+.cache/

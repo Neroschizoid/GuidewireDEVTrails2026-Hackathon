@@ -14,6 +14,7 @@ class Worker:
     location: str
     income: float
     active: bool = True
+    shield: int = 0
 
 
 @dataclass

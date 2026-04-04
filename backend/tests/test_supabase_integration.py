@@ -55,6 +55,19 @@ from app.main import app              # noqa: E402
 
 client = TestClient(app, raise_server_exceptions=True)
 
+# MOCK Weather API for testing different test conditions based on 'lat'
+def mock_weather(lat, lon):
+    if lat == 90.0: return 90.0, 200.0
+    if lat == 10.0: return 10.0, 350.0
+    if lat == 0.0: return 10.0, 50.0
+    return 80.0, 250.0
+
+import app.services.event_service
+import app.services.risk_service
+app.services.event_service.fetch_live_weather = mock_weather
+app.services.risk_service.fetch_live_weather = mock_weather
+
+
 
 # ---------------------------------------------------------------------------
 # Session-scoped fixture: ensure all tables exist in Supabase once per run
@@ -156,8 +169,7 @@ class TestRisk:
             "/api/v1/risk/calculate",
             json={
                 "worker_id": worker_id,
-                "rainfall": 100,
-                "aqi": 300,
+                "lat": 80.0, "lon": 70.0,
                 "temperature": 32,
                 "peak": True,
                 "location_risk": 0.6,
@@ -178,8 +190,7 @@ class TestRisk:
             "/api/v1/risk/calculate",
             json={
                 "worker_id": str(uuid.uuid4()),
-                "rainfall": 50,
-                "aqi": 150,
+                "lat": 80.0, "lon": 70.0,
                 "temperature": 28,
                 "peak": False,
                 "location_risk": 0.3,
@@ -206,8 +217,7 @@ class TestPolicy:
             "/api/v1/risk/calculate",
             json={
                 "worker_id": wid,
-                "rainfall": 80,
-                "aqi": 250,
+                "lat": 80.0, "lon": 70.0,
                 "temperature": 30,
                 "peak": True,
                 "location_risk": 0.5,
@@ -260,8 +270,7 @@ class TestEvent:
             "/api/v1/risk/calculate",
             json={
                 "worker_id": wid,
-                "rainfall": 90,
-                "aqi": 280,
+                "lat": 90.0, "lon": 70.0,
                 "temperature": 31,
                 "peak": True,
                 "location_risk": 0.6,
@@ -279,7 +288,7 @@ class TestEvent:
         _, loc = insured_worker
         r = client.post(
             "/api/v1/event/trigger",
-            json={"location": loc, "rainfall": 90, "aqi": 200},
+            json={"location": loc, "lat": 90.0, "lon": 70.0},
         )
         assert r.status_code == 200, r.text
         body = r.json()
@@ -291,7 +300,7 @@ class TestEvent:
         _, loc = insured_worker
         r = client.post(
             "/api/v1/event/trigger",
-            json={"location": loc, "rainfall": 10, "aqi": 350},
+            json={"location": loc, "lat": 10.0, "lon": 70.0},
         )
         assert r.status_code == 200, r.text
         body = r.json()
@@ -302,7 +311,7 @@ class TestEvent:
         _, loc = insured_worker
         r = client.post(
             "/api/v1/event/trigger",
-            json={"location": loc, "rainfall": 10, "aqi": 50},
+            json={"location": loc, "lat": 0.0, "lon": 70.0},
         )
         assert r.status_code == 200, r.text
         body = r.json()
@@ -328,8 +337,7 @@ class TestPayout:
             "/api/v1/risk/calculate",
             json={
                 "worker_id": wid,
-                "rainfall": 80,
-                "aqi": 250,
+                "lat": 80.0, "lon": 70.0,
                 "temperature": 29,
                 "peak": True,
                 "location_risk": 0.5,
@@ -343,7 +351,7 @@ class TestPayout:
         )
         ev = client.post(
             "/api/v1/event/trigger",
-            json={"location": loc, "rainfall": 80, "aqi": 200},
+            json={"location": loc, "lat": 80.0, "lon": 70.0},
         )
         eid = ev.json()["event_id"]
         return wid, eid
@@ -407,8 +415,7 @@ class TestEndToEnd:
             "/api/v1/risk/calculate",
             json={
                 "worker_id": wid,
-                "rainfall": 85,
-                "aqi": 310,
+                "lat": 80.0, "lon": 70.0,
                 "temperature": 33,
                 "peak": True,
                 "location_risk": 0.7,
@@ -432,7 +439,7 @@ class TestEndToEnd:
         # Step 4 — Event (heavy rain)
         event = client.post(
             "/api/v1/event/trigger",
-            json={"location": loc, "rainfall": 90, "aqi": 310},
+            json={"location": loc, "lat": 90.0, "lon": 70.0},
         )
         assert event.status_code == 200, event.text
         eid = event.json()["event_id"]

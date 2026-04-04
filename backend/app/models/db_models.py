@@ -13,6 +13,12 @@ def _uuid() -> str:
     return str(uuid4())
 
 
+class ShieldTierDB(Base):
+    __tablename__ = "shields"
+    p_id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+
+
 class WorkerDB(Base):
     __tablename__ = "workers"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
@@ -22,6 +28,7 @@ class WorkerDB(Base):
     location: Mapped[str] = mapped_column(String, nullable=False, index=True)
     income: Mapped[float] = mapped_column(Float, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    shield: Mapped[int] = mapped_column(ForeignKey("shields.p_id"), default=0, nullable=False)
 
 
 class RiskProfileDB(Base):

@@ -24,9 +24,17 @@ export default function App() {
   });
   const [workerId, setWorkerId] = useState("");
 
+  const [geoCoords, setGeoCoords] = useState({ lat: 12.9716, lon: 77.5946 });
+
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        setGeoCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      });
+    }
+  }, []);
+
   const [riskForm, setRiskForm] = useState({
-    rainfall: 80,
-    aqi: 250,
     temperature: 28,
     peak: true,
     location_risk: 0.5,
@@ -44,8 +52,6 @@ export default function App() {
 
   const [eventForm, setEventForm] = useState({
     location: "",
-    rainfall: 75,
-    aqi: 180,
   });
   const [eventResult, setEventResult] = useState(null);
 
@@ -132,8 +138,8 @@ export default function App() {
     return exp;
   }, [riskResult, policyResult, policyForm.base_price]);
 
-  function calcEventPayoutAmount(rainfall, aqi) {
-    return Math.max((Number(rainfall) * 1.2) + (Number(aqi) * 0.2), 0);
+  function predictedPayout() {
+    return 150.0; // fallback idempotent check amount
   }
 
   function syncWorkerId(newId, locationOverride) {
@@ -191,7 +197,8 @@ export default function App() {
     setError(null);
     setApiStatus("Calculating ML risk…");
     try {
-      const data = await apiPost("/api/v1/risk/calculate", riskForm);
+      const payload = { ...riskForm, lat: geoCoords.lat, lon: geoCoords.lon };
+      const data = await apiPost("/api/v1/risk/calculate", payload);
       setRiskResult(data);
       setApiStatus("Risk profile updated.");
     } catch (e) {
@@ -217,10 +224,11 @@ export default function App() {
     setError(null);
     setApiStatus("Triggering disruption event…");
     try {
-      // event endpoint infers type from rainfall/aqi.
-      const data = await apiPost("/api/v1/event/trigger", eventForm);
+      // event endpoint infers type from live weather now.
+      const payload = { ...eventForm, lat: geoCoords.lat, lon: geoCoords.lon };
+      const data = await apiPost("/api/v1/event/trigger", payload);
       setEventResult(data);
-      const amt = calcEventPayoutAmount(eventForm.rainfall, eventForm.aqi);
+      const amt = predictedPayout();
       setPayoutForm((p) => ({ ...p, event_id: data.event_id, amount: amt }));
       setApiStatus("Event stored and payouts evaluated.");
     } catch (e) {
@@ -246,16 +254,18 @@ export default function App() {
     setError(null);
     setApiStatus("Running full simulation…");
     try {
-      const riskData = await apiPost("/api/v1/risk/calculate", riskForm);
+      const riskPayload = { ...riskForm, lat: geoCoords.lat, lon: geoCoords.lon };
+      const riskData = await apiPost("/api/v1/risk/calculate", riskPayload);
       setRiskResult(riskData);
 
       const policyData = await apiPost("/api/v1/policy/purchase", policyForm);
       setPolicyResult(policyData);
 
-      const eventData = await apiPost("/api/v1/event/trigger", eventForm);
+      const eventPayload = { ...eventForm, lat: geoCoords.lat, lon: geoCoords.lon };
+      const eventData = await apiPost("/api/v1/event/trigger", eventPayload);
       setEventResult(eventData);
 
-      const amt = calcEventPayoutAmount(eventForm.rainfall, eventForm.aqi);
+      const amt = predictedPayout();
       setPayoutForm((p) => ({ ...p, event_id: eventData.event_id, amount: amt }));
 
       const payoutData = await apiPost("/api/v1/payout/process", {
@@ -461,20 +471,8 @@ export default function App() {
           <div hidden={!auth}>
             <div className="divider" />
 
-          <div className="sectionTitle">2. ML Risk Profiling</div>
+          <div className="sectionTitle">2. ML Risk Profiling ({geoCoords.lat.toFixed(4)}, {geoCoords.lon.toFixed(4)})</div>
           <div className="formGrid">
-            <div className="field">
-              <label>rainfall (mm)</label>
-              <input
-                type="number"
-                value={riskForm.rainfall}
-                onChange={(e) => setRiskForm((p) => ({ ...p, rainfall: Number(e.target.value) }))}
-              />
-            </div>
-            <div className="field">
-              <label>AQI</label>
-              <input type="number" value={riskForm.aqi} onChange={(e) => setRiskForm((p) => ({ ...p, aqi: Number(e.target.value) }))} />
-            </div>
             <div className="field">
               <label>temperature (°C)</label>
               <input
@@ -541,14 +539,6 @@ export default function App() {
                 onChange={(e) => setEventForm((p) => ({ ...p, location: e.target.value }))}
                 placeholder="same as worker location"
               />
-            </div>
-            <div className="field">
-              <label>rainfall (mm)</label>
-              <input type="number" value={eventForm.rainfall} onChange={(e) => setEventForm((p) => ({ ...p, rainfall: Number(e.target.value) }))} />
-            </div>
-            <div className="field">
-              <label>AQI</label>
-              <input type="number" value={eventForm.aqi} onChange={(e) => setEventForm((p) => ({ ...p, aqi: Number(e.target.value) }))} />
             </div>
             <div className="field">
               <label>event_id</label>

@@ -112,9 +112,17 @@ export default function GWApp() {
     if (online) setOnlineSince(Date.now());
   }, [online]);
 
+  const [geoCoords, setGeoCoords] = useState({ lat: 12.9716, lon: 77.5946 });
+
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        setGeoCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      });
+    }
+  }, []);
+
   const [mlForm, setMlForm] = useState({
-    rainfall: 80,
-    aqi: 250,
     temperature: 30,
     peak: true,
     location_risk: 0.5,
@@ -122,7 +130,6 @@ export default function GWApp() {
     base_price: 20,
   });
   const [policyForm, setPolicyForm] = useState({ base_price: 20, days: 7 });
-  const [triggerForm, setTriggerForm] = useState({ rainfall: 75, aqi: 180 });
 
   const [riskResult, setRiskResult] = useState(null);
   const [policyResult, setPolicyResult] = useState(null);
@@ -143,23 +150,42 @@ export default function GWApp() {
     }
   }, [auth]);
 
+  // Catch session expiry from api.js (refresh token expired)
+  useEffect(() => {
+    function handleExpiry() {
+      setAuth(null);
+      setTab("dashboard");
+      resetSession();
+      setError("Your session expired. Please log in again.");
+    }
+    window.addEventListener("gw:session_expired", handleExpiry);
+    return () => window.removeEventListener("gw:session_expired", handleExpiry);
+  }, []);
+
   const riskPct = useMemo(() => {
     const v = Number(riskResult?.risk_score ?? 0);
     return clamp(Math.round(v * 100), 0, 100);
   }, [riskResult]);
 
+  const shieldsList = useMemo(() => [
+    { p_id: 0, key: "none", name: "No Shield", base: 0, limit: 0, triggers: [], popular: false, accent: "transparent", price: 0 },
+    { p_id: 1, key: "basic", name: "Basic Shield", base: 20, limit: 150, triggers: ["Rain", "Heatwave"], popular: false, accent: "rgba(36,214,255,.25)", price: 49 },
+    { p_id: 2, key: "pro", name: "Pro Armor", base: 40, limit: 300, triggers: ["Rain", "Heatwave", "Traffic Halt"], popular: true, accent: "rgba(124,92,255,.30)", price: 99 },
+    { p_id: 3, key: "elite", name: "Elite Armor", base: 60, limit: 450, triggers: ["Rain", "Heatwave", "Curfew"], popular: false, accent: "rgba(255,77,141,.22)", price: 149 },
+  ], []);
+
+  const [selectedShopTier, setSelectedShopTier] = useState(1);
+
   const tier = useMemo(() => {
-    if (riskPct >= 75) return { key: "elite", name: "Elite Armor", base: 60, limit: 450, popular: false };
-    if (riskPct >= 45) return { key: "pro", name: "Pro Armor", base: 40, limit: 300, popular: true };
-    return { key: "basic", name: "Basic Shield", base: 20, limit: 150, popular: false };
-  }, [riskPct]);
+    return shieldsList.find(s => s.p_id === (auth?.shield || 0)) || shieldsList[0];
+  }, [auth?.shield, shieldsList]);
 
   useEffect(() => {
     setMlForm((p) => ({ ...p, base_price: tier.base }));
     setPolicyForm((p) => ({ ...p, base_price: tier.base }));
   }, [tier.base]);
 
-  const totalSecured = payoutResult ? Number(payoutResult.amount) : 0;
+  const totalSecured = auth?.weekly_earnings || 0;
   const weeklyGoal = 10000;
 
   const onlineDuration = useMemo(() => {
@@ -190,6 +216,11 @@ export default function GWApp() {
         location: data.location,
         income: registerForm.income,
         active: data.active,
+        shield: data.shield,
+        active_policy: data.active_policy,
+        weekly_earnings: data.weekly_earnings,
+        access_token: data.access_token || "",
+        refresh_token: data.refresh_token || "",
       };
       setAuth(worker);
       resetSession();
@@ -212,10 +243,48 @@ export default function GWApp() {
         location: data.location,
         income: data.income,
         active: data.active,
+        shield: data.shield,
+        active_policy: data.active_policy,
+        weekly_earnings: data.weekly_earnings,
+        access_token: data.access_token || "",
+        refresh_token: data.refresh_token || "",
       });
       resetSession();
       setApiStatus(null);
       setTab("dashboard");
+    } catch (e) {
+      setError(String(e?.message || e));
+      setApiStatus(null);
+    }
+  }
+
+  async function payForShield() {
+    if (!auth) return;
+    setError(null);
+    const shopTier = shieldsList.find(s => s.p_id === selectedShopTier);
+    if (!shopTier) return;
+    const currentTierObj = shieldsList.find(s => s.p_id === (auth.shield || 0)) || shieldsList[0];
+    const upgradePrice = Math.max(0, shopTier.price - currentTierObj.price);
+    setApiStatus(`Processing ₹${upgradePrice} payment...`);
+    try {
+      const payload = { 
+        worker_id: auth.worker_id, 
+        p_id: selectedShopTier,
+        risk_score: riskResult?.risk_score || 0.0,
+        premium: riskResult?.premium_quote || shopTier.price,
+        days: policyForm.days || 7
+      };
+      const data = await apiPost("/api/v1/payment/process", payload);
+      if (data.status) {
+         setAuth(prev => ({ ...prev, shield: selectedShopTier, active_policy: true }));
+         setApiStatus("Shield Upgrade Successful!");
+         setMlForm((p) => ({ ...p, base_price: shopTier.base }));
+         setPolicyForm((p) => ({ ...p, base_price: shopTier.base }));
+         resetSession();
+      } else {
+         setError("Payment failed.");
+         setApiStatus(null);
+      }
     } catch (e) {
       setError(String(e?.message || e));
       setApiStatus(null);
@@ -230,6 +299,8 @@ export default function GWApp() {
       const payload = {
         worker_id: auth.worker_id,
         ...mlForm,
+        lat: geoCoords.lat,
+        lon: geoCoords.lon,
         location_risk: mlForm.location_risk,
       };
       const data = await apiPost("/api/v1/risk/calculate", payload);
@@ -241,23 +312,16 @@ export default function GWApp() {
     }
   }
 
-  async function buyPolicy() {
-    if (!auth) return;
-    setError(null);
-    setApiStatus("Purchasing policy…");
-    try {
-      const payload = { worker_id: auth.worker_id, base_price: policyForm.base_price, days: policyForm.days };
-      const data = await apiPost("/api/v1/policy/purchase", payload);
-      setPolicyResult(data);
-      setApiStatus(null);
-    } catch (e) {
-      setError(String(e?.message || e));
-      setApiStatus(null);
+  function goToStore() {
+    if (riskResult) {
+      const recTier = riskPct >= 75 ? 3 : riskPct >= 45 ? 2 : 1;
+      setSelectedShopTier(recTier);
     }
+    setTab("store");
   }
 
   function predictedPayout() {
-    return Math.max(triggerForm.rainfall * 1.2 + triggerForm.aqi * 0.2, 0);
+    return 150.0;
   }
 
   async function activateTrigger() {
@@ -267,8 +331,8 @@ export default function GWApp() {
     try {
       const eventPayload = {
         location: auth.location,
-        rainfall: triggerForm.rainfall,
-        aqi: triggerForm.aqi,
+        lat: geoCoords.lat,
+        lon: geoCoords.lon,
       };
       const ev = await apiPost("/api/v1/event/trigger", eventPayload);
       setEventResult(ev);
@@ -279,6 +343,9 @@ export default function GWApp() {
         amount: amt,
       });
       setPayoutResult(po);
+      if (po.amount > 0 && ev.type !== "none") {
+         setAuth(prev => ({ ...prev, weekly_earnings: (prev.weekly_earnings || 0) + Number(po.amount) }));
+      }
       setApiStatus(null);
     } catch (e) {
       setError(String(e?.message || e));
@@ -441,22 +508,19 @@ export default function GWApp() {
                     <div className="gwTierPill">Current Tier: {tier.name}</div>
                   </div>
                   <div className="gwFormGrid">
-                    <label className="gwLabel">
-                      rainfall (mm)
-                      <input className="gwInput" type="number" value={mlForm.rainfall} onChange={(e) => setMlForm((p) => ({ ...p, rainfall: Number(e.target.value) }))} />
-                    </label>
-                    <label className="gwLabel">
-                      AQI
-                      <input className="gwInput" type="number" value={mlForm.aqi} onChange={(e) => setMlForm((p) => ({ ...p, aqi: Number(e.target.value) }))} />
-                    </label>
+                     <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, padding: 8 }}>
+                        Using live weather for prediction: {geoCoords.lat.toFixed(4)}, {geoCoords.lon.toFixed(4)}
+                     </div>
                   </div>
                   <div className="gwRow" style={{ marginTop: 12 }}>
                     <button className="gwPrimaryBtn" onClick={runML}>
                       Run ML Model
                     </button>
-                    <button className="gwSecondaryBtn" onClick={buyPolicy} disabled={!riskResult}>
-                      Buy Policy
-                    </button>
+                    {riskResult && (auth?.shield || 0) < (riskPct >= 75 ? 3 : riskPct >= 45 ? 2 : 1) ? (
+                      <button className="gwSecondaryBtn" onClick={goToStore}>
+                        Go to Policy Store (Upgrade Recommended)
+                      </button>
+                    ) : null}
                   </div>
                   {riskResult ? (
                     <div className="gwInlineStats">
@@ -519,35 +583,15 @@ export default function GWApp() {
                       <div className="gwTriggerTitle">PARAMETRIC TRIGGER</div>
                       <div className="gwTriggerAmount">+ ₹{Math.round(predictedPayout())}</div>
                     </div>
-                    <div className="gwTriggerSub">Heavy rain automatically detected in your zone.</div>
-                    <div className="gwFormGrid" style={{ marginTop: 12 }}>
-                      <label className="gwLabel">
-                        rainfall (mm)
-                        <input
-                          className="gwInput"
-                          type="number"
-                          value={triggerForm.rainfall}
-                          onChange={(e) => setTriggerForm((p) => ({ ...p, rainfall: Number(e.target.value) }))}
-                        />
-                      </label>
-                      <label className="gwLabel">
-                        AQI
-                        <input
-                          className="gwInput"
-                          type="number"
-                          value={triggerForm.aqi}
-                          onChange={(e) => setTriggerForm((p) => ({ ...p, aqi: Number(e.target.value) }))}
-                        />
-                      </label>
-                    </div>
+                    <div className="gwTriggerSub">Heavy rain automatically detected in your zone. ({geoCoords.lat.toFixed(4)}, {geoCoords.lon.toFixed(4)})</div>
                     <div className="gwRow" style={{ marginTop: 12 }}>
-                      <button className="gwPrimaryBtn" onClick={activateTrigger} disabled={!policyResult}>
+                      <button className="gwPrimaryBtn" onClick={activateTrigger} disabled={!auth?.active_policy}>
                         Activate Trigger
                       </button>
                       <button
                         className="gwSecondaryBtn"
                         onClick={activateTrigger}
-                        disabled={!policyResult || !eventResult}
+                        disabled={!auth?.active_policy || !eventResult}
                         title="Idempotent payout check"
                       >
                         Trigger Again
@@ -587,15 +631,11 @@ export default function GWApp() {
                   </div>
 
                   <div className="gwTierGrid">
-                    {[
-                      { key: "basic", name: "Basic Shield", base: 20, limit: 150, triggers: ["Rain", "Heatwave"], popular: false, accent: "rgba(36,214,255,.25)" },
-                      { key: "pro", name: "Pro Armor", base: 40, limit: 300, triggers: ["Rain", "Heatwave", "Traffic Halt"], popular: true, accent: "rgba(124,92,255,.30)" },
-                      { key: "elite", name: "Elite Armor", base: 60, limit: 450, triggers: ["Rain", "Heatwave", "Curfew"], popular: false, accent: "rgba(255,77,141,.22)" },
-                    ].map((t) => (
+                    {shieldsList.filter(t => t.p_id > 0).map((t) => (
                       <div
                         key={t.key}
-                        className={tier.key === t.key ? "gwTierCard gwTierCardActive" : "gwTierCard"}
-                        style={{ borderColor: tier.key === t.key ? "rgba(36,214,255,.40)" : "rgba(255,255,255,.10)" }}
+                        className={selectedShopTier === t.p_id ? "gwTierCard gwTierCardActive" : "gwTierCard"}
+                        style={{ borderColor: selectedShopTier === t.p_id ? "rgba(36,214,255,.40)" : "rgba(255,255,255,.10)" }}
                       >
                         {t.popular ? <div className="gwBadge">MOST POPULAR</div> : null}
                         <div className="gwTierCardHead">
@@ -613,18 +653,21 @@ export default function GWApp() {
                           ))}
                         </div>
                         <button
-                          className={tier.key === t.key ? "gwPrimaryBtn gwPrimaryBtnSmall" : "gwSecondaryBtn gwPrimaryBtnSmall"}
-                          onClick={() => {
-                            setMlForm((p) => ({ ...p, base_price: t.base }));
-                            setPolicyForm((p) => ({ ...p, base_price: t.base }));
-                            // Encourage correct tier usage: clear previous results when changing tier.
-                            resetSession();
-                          }}
+                          className={selectedShopTier === t.p_id ? "gwPrimaryBtn gwPrimaryBtnSmall" : "gwSecondaryBtn gwPrimaryBtnSmall"}
+                          onClick={() => setSelectedShopTier(t.p_id)}
+                          disabled={t.p_id < (auth?.shield || 0) || (t.p_id === (auth?.shield || 0) && auth?.active_policy)}
+                          style={{ opacity: t.p_id < (auth?.shield || 0) || (t.p_id === (auth?.shield || 0) && auth?.active_policy) ? 0.5 : 1 }}
                         >
-                          {tier.key === t.key ? "Selected" : "Select Tier"}
+                          {t.p_id === (auth?.shield || 0) ? (auth?.active_policy ? "Active Tier" : "Expired - Renew") : t.p_id < (auth?.shield || 0) ? "Owned" : selectedShopTier === t.p_id ? "Selected" : "Select Tier"}
                         </button>
                       </div>
                     ))}
+                  </div>
+
+                  <div className="gwRow" style={{ marginTop: 16 }}>
+                    <button className="gwPrimaryBtn" onClick={payForShield} disabled={(selectedShopTier < (auth?.shield || 0)) || (selectedShopTier === (auth?.shield || 0) && auth?.active_policy)}>
+                      Pay ₹{Math.max(0, (shieldsList.find(s => s.p_id === selectedShopTier)?.price || 0) - (auth?.active_policy ? (shieldsList.find(s => s.p_id === (auth?.shield || 0))?.price || 0) : 0))} to {selectedShopTier === (auth?.shield || 0) ? "Renew" : "Upgrade"}
+                    </button>
                   </div>
 
                   <div className="gwDivider" style={{ marginTop: 16 }} />

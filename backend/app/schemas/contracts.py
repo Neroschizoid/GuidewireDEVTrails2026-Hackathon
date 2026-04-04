@@ -23,6 +23,11 @@ class RegisterWorkerResponse(BaseModel):
     worker_id: str
     location: str
     active: bool
+    shield: int = 0
+    weekly_earnings: float = 0.0
+    active_policy: bool = False
+    access_token: str = ""
+    refresh_token: str = ""
 
 
 class WorkerInfoResponse(BaseModel):
@@ -32,17 +37,30 @@ class WorkerInfoResponse(BaseModel):
     location: str
     income: float
     active: bool
+    shield: int = 0
+    weekly_earnings: float = 0.0
+    active_policy: bool = False
+    access_token: str = ""
+    refresh_token: str = ""
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+class RefreshTokenResponse(BaseModel):
+    access_token: str
 
 
 class RiskRequest(BaseModel):
     worker_id: str
-    rainfall: float = Field(ge=0, le=500)
-    aqi: float = Field(ge=0, le=1000)
+    lat: float
+    lon: float
     temperature: float = Field(ge=-30, le=70)
     peak: bool
     location_risk: float = Field(ge=0, le=1)
     hours: float = Field(ge=0, le=24)
-    base_price: float = Field(gt=0, default=20)
+    base_price: float = Field(ge=0, default=20)
 
 
 class RiskResponse(BaseModel):
@@ -56,7 +74,7 @@ class RiskResponse(BaseModel):
 
 class PurchasePolicyRequest(BaseModel):
     worker_id: str
-    base_price: float = Field(gt=0)
+    base_price: float = Field(ge=0)
     days: int = Field(gt=0, le=30)
 
 
@@ -71,8 +89,8 @@ class PurchasePolicyResponse(BaseModel):
 
 class TriggerEventRequest(BaseModel):
     location: str
-    rainfall: float = Field(ge=0, le=500)
-    aqi: float = Field(ge=0, le=1000)
+    lat: float
+    lon: float
     force_event_type: Optional[str] = None
 
 
@@ -81,6 +99,26 @@ class TriggerEventResponse(BaseModel):
     type: str
     payouts_processed: int
     payouts_skipped: int
+
+
+class PayoutResponse(BaseModel):
+    payout_id: str
+    status: str
+    amount: float
+    worker_id: str
+    event_id: str
+
+
+class PaymentRequest(BaseModel):
+    worker_id: str
+    p_id: int
+    risk_score: float = 0.0
+    premium: float = 0.0
+    days: int = 7
+
+
+class PaymentResponse(BaseModel):
+    status: bool
 
 
 class PayoutResult(BaseModel):

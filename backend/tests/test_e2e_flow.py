@@ -24,8 +24,7 @@ def test_end_to_end_worker_risk_policy_event_payout() -> None:
         "/api/v1/risk/calculate",
         json={
             "worker_id": worker_id,
-            "rainfall": 120,
-            "aqi": 320,
+            "lat": 80.0, "lon": 70.0,
             "temperature": 31,
             "peak": True,
             "location_risk": 0.7,
@@ -49,7 +48,7 @@ def test_end_to_end_worker_risk_policy_event_payout() -> None:
 
     event_res = client.post(
         "/api/v1/event/trigger",
-        json={"location": "blr-east", "rainfall": 90, "aqi": 350},
+        json={"location": "blr-east", "lat": 90.0, "lon": 70.0},
     )
     assert event_res.status_code == 200
     event_body = event_res.json()
@@ -68,8 +67,7 @@ def test_payout_idempotency_same_worker_event() -> None:
         "/api/v1/risk/calculate",
         json={
             "worker_id": worker_id,
-            "rainfall": 80,
-            "aqi": 250,
+            "lat": 80.0, "lon": 70.0,
             "temperature": 28,
             "peak": True,
             "location_risk": 0.5,
@@ -82,7 +80,7 @@ def test_payout_idempotency_same_worker_event() -> None:
     )
     event_res = client.post(
         "/api/v1/event/trigger",
-        json={"location": "hyd-west", "rainfall": 75, "aqi": 180},
+        json={"location": "hyd-west", "lat": 80.0, "lon": 70.0},
     )
     event_id = event_res.json()["event_id"]
 

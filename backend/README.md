@@ -1,992 +1,138 @@
----
+# Backend — Parametric Shield API
 
-##  1. Problem Overview
-
-Gig economy delivery workers (Zomato, Swiggy, etc.) rely on **daily earnings**.
-However, external disruptions such as **heavy rain, pollution, curfews, and zone closures** can reduce their working hours, causing **significant income loss (20–30%)**.
-
-Currently, there is **no protection mechanism** for such uncontrollable disruptions.
+FastAPI backend for the Gig Worker Parametric Insurance platform. Handles ML risk scoring, live weather integration, JWT authentication, parametric event triggers, and idempotent payout processing.
 
 ---
 
-##  2. Target Persona & Scenarios
+## Quick Start
 
-### Persona: Food Delivery Rider (Zomato/Swiggy)
-
-* Works during **peak hours (lunch & dinner)**
-* Earns ₹800–₹1200 daily
-* Highly dependent on weather and local conditions
-
----
-
-### Scenario 1: Heavy Rain (Peak Hours)
-
-* Time: 7–10 PM
-* Condition: Heavy rainfall
-* Impact: Orders drop / deliveries halted
-* Loss: ₹150–₹300
-
----
-
-### Scenario 2: High Pollution (AQI > 400)
-
-* Rider avoids working due to unsafe conditions
-* Reduced working hours
-* Loss: ₹100–₹200
-
----
-
-### Scenario 3: Curfew 
-
-* Area becomes inaccessible
-* No deliveries possible
-* Loss: ₹650–₹1000
-
----
-
-### Scenario 4: Zone Closure
-
-* Forced to reallocate
-* Deliveries in unfamiliar places
-* Loss: ₹300–₹500
-
----
-
-## 3. System Workflow
-### System Workflow Diagram
-```mermaid
-flowchart TD
-    A[User Onboarding] --> B[Risk Profiling AI]
-    B --> C[Weekly Policy Activation]
-    C --> D[Real-Time Monitoring]
-
-    D --> E[Disruption Detected]
-    E --> F{Trigger Conditions Met?}
-
-    F -->|No| D
-    F -->|Yes| G[Validation Layer]
-
-    G --> H{Valid Impact?}
-    H -->|No| D
-    H -->|Yes| I[Secure Payout : Idempotent]
-
-    I --> J[Update Records & Models]
+```bash
+conda activate gw
+pip install -r requirements.txt
+uvicorn app.main:app --reload
 ```
 
-### 1. **User Onboarding**
-   - Worker registers and connects (or simulates connection) to delivery platform  
-   - System captures:
-     - Location (via platform tracking)  
-     - Historical activity (working hours, deliveries)  
-
-### 2. **Risk Profiling (AI)**
-
-   - System calculates risk score based on:
-     - Location  
-     - Weather trends  
-     - Historical disruptions  
-     - Worker behavior profile 
-      
-
-### 3. **Weekly Policy Purchase**
-
-- Worker selects a coverage plan  
-- System calculates a dynamic weekly premium based on risk  
-- Policy is activated for a 7-day cycle 
-
-
-### 4. **Real-Time Monitoring**
-   - System continuously tracks:
-     - Weather (rain)  
-     - AQI levels  
-     - Events (curfews, strikes) 
-### 5. **Trigger Detection**
-   - If disruption exceeds threshold → event triggered  
-
-### 6. **Validation Layer**
-   - Verify:
-     - Worker activity  
-     - Location authenticity  
-     - Income impact   
-
-### 7. **Automatic Payout**
-
-   - Once validation is complete, the system automatically initiates the payout process.
-
-   - The payout is governed by **event-based and idempotent logic**:
-     - Each disruption is assigned a unique **event_id**
-     - Each worker can receive **only one payout per event**
-
-   - Before processing payment, the system checks:
-     - Worker activity and eligibility  
-     - Whether payout for worker already exists  
-
-   - **Idempotency ensures:**
-     - Multiple trigger calls or retries do not result in duplicate payments  
-     - System remains safe under high load or network failures 
+API docs auto-generated at: `http://localhost:8000/docs`
 
 ---
 
+## Environment Variables
 
-## 4. Parametric Trigger Design
+Create `backend/.env`:
 
-Our system uses **event-based triggers**, eliminating manual claims.
-### Parametric Trigger Logic
-
-```mermaid
-flowchart LR
-    A[Disruption Event<br>Rain / AQI / Curfew] --> B[Worker Active?]
-    B -->|No| X[No Payout]
-    B -->|Yes| C[Location Verified]
-
-    C -->|No| X
-    C -->|Yes| D[Income Impact Detected]
-
-    D -->|No| X
-    D -->|Yes| E[Trigger Valid]
+```env
+DATABASE_URL=postgresql://user:pass@host:port/dbname
+SECRET_KEY=your_random_secret_key_here
 ```
 
-> **Payout = Event + Active Worker + Verified Impact**
-
-### Example Triggers
-- Rainfall > 50 mm (2 hours)  
-- AQI > 300 (Hazardous)  
-- Curfew / strike detected  
-
----
-
-
-## 5. Weekly Dynamic Premium Model
-
-###  Plan Generation
-
-   The system generates a plan using:
-
-   - Risk score (from AI model)
-   - Worker’s location (zone-based risk)
-   - Upcoming weekly forecast (rain, AQI, events)
-   - Historical disruption frequency
-   - Worker’s average earnings
-
-
-
-### Coverage Definition
-
-   Each policy clearly defines:
-
-   - **Coverage Duration:** 7 days (weekly cycle)
-   - **Covered Disruptions:**
-     - Heavy rain
-     - High AQI
-     - Curfews / strikes
-     - Zone closures  
-
-   - **Coverage Type:**
-     - Fixed payout (e.g., ₹100–₹300 per disruption)
-     - OR earnings-based payout (based on estimated hourly loss)
-
-
-
-### Dynamic Premium Calculation
-
-   The premium is calculated dynamically using:
-
-   > **Premium = Base Price × Risk Multiplier × Coverage Factor**
-
-   Where:
-   - **Base Price:** Standard entry-level cost (e.g., ₹20/week)
-   - **Risk Multiplier:** Derived from:
-     - Location risk (flood-prone, high AQI zones)
-     - Weekly forecast (expected disruptions)
-   - **Coverage Factor:** Based on selected payout level
-
-
-
-### Plan Personalization
-
-   The system may recommend:
-
-   - Lower-cost plans for low-risk workers  
-   - Higher coverage for high-risk zones  
-   - Optional upgrades during high-risk weeks  
-
-   Example:
-   - “Heavy rain expected this week → upgrade coverage for ₹5 more”
-
-
-
-### Policy Activation
-
-   - Worker confirms and pays the premium  
-   - Policy becomes **active immediately or from next cycle**  
-   - System links:
-     - Worker ID  
-     - Active time window  
-     - Covered zones  
-
-
-
-### Policy Constraints
-
-   - Valid only during the **selected 7-day period**  
-   - Payouts only triggered if:
-     - Worker is active  
-     - Disruption occurs within coverage window  
-     - Impact is verified  
-
-
-
-### Transparency & Feedback
-
-   The worker can view:
-
-   - Active coverage status  
-   - Weekly premium paid  
-   - Potential payout scenarios  
-   - Risk insights for the week  
-
----
-## 6. Platform Choice: Mobile First
-
-We choose **Mobile** because:
-
-- Delivery workers primarily use smartphones  
-- Real-time notifications are critical  
-- Better integration with:
-  - GPS tracking  
-  - Activity monitoring  
-  - Background data collection  
-
-> A mobile-first approach ensures seamless, real-time interaction with the worker’s daily workflow.
-
----
-
-## 7. AI/ML Integration Strategy
-
-Our system leverages AI/ML to enhance **risk prediction, pricing accuracy, and fraud prevention**, making the insurance model adaptive and reliable.
-
----
-
-### 1. Risk Prediction Model
-
-We use predictive models to estimate the **probability of disruption events** for a given worker.
-
-#### Inputs:
-- Location (zone-level risk)
-- Historical weather patterns
-- Upcoming forecast (rain, AQI)
-- Past disruption frequency
-
-#### Output:
-- Risk score (0–1 or low/medium/high)
-
-> This risk score forms the foundation for premium calculation and trigger sensitivity.
-
-
-
-### 2. Dynamic Premium Calculation
-
-AI models dynamically adjust weekly premiums based on predicted risk.
-
-#### Approach:
-- Use regression-based models or rule-enhanced scoring
-- Map risk score → pricing multiplier
-
-#### Example:
-- Low predicted disruption → lower premium  
-- High predicted disruption → higher premium  
-
->  Ensures fair, personalized, and adaptive pricing.
-
-
-
-### 3. Earnings & Impact Estimation
-
-We model expected earnings using historical behavior:
-
-> **Expected Earnings = f(time, location, activity history)**
-
-#### Use Cases:
-- Estimate income loss during disruptions  
-- Enable **impact-based payouts** instead of fixed payouts  
-
-
-### 4. Fraud Detection & Anomaly Detection
-
-We use AI-based anomaly detection to identify suspicious behavior.
-
-#### Key Signals:
-- GPS inconsistencies  
-- Sudden movement anomalies  
-- Repeated claims patterns  
-- Activity vs payout mismatch  
-
-#### Techniques:
-- Rule-based + anomaly detection models  
-- Behavioral pattern analysis  
-
-> Helps detect GPS spoofing, duplicate claims, and system misuse.
-
-
-
-### 5. Behavioral Profiling
-
-Each worker is assigned a dynamic profile based on:
-
-- Work consistency  
-- Delivery frequency  
-- Claim history  
-
-This enables:
-- Personalized risk assessment  
-- Trust scoring for fraud control  
-
-
-
-### 6. Continuous Learning (Future Scope)
-
-- Models improve over time using:
-  - Claim outcomes  
-  - Disruption accuracy  
-  - User behavior trends  
-
-
----
-
-## 8. Adversarial Defense & Anti-Spoofing Strategy
-
-### Problem Context
-
-Parametric insurance systems are vulnerable to **coordinated fraud attacks**, where users spoof GPS locations to falsely appear inside disruption zones and trigger payouts.
-
-In a worst-case scenario, organized groups can exploit this at scale, causing **mass false payouts and liquidity drain**.
-
-Our system is designed to be **resilient against such adversarial behavior** by validating not just *where the worker is*, but *whether they are genuinely impacted*.
-
----
-
----
-
-
-
-### Anti-Spoofing & Fraud Detection Flow
-
-
-```mermaid
-flowchart TD
-    A[Claim Triggered] --> B[Location Validation]
-
-    B --> C[GPS + Network + IP Check]
-    C --> D[Movement Pattern Analysis]
-
-    D --> E[Activity Validation<br>Delivery Logs]
-    E --> F[Earnings Impact Check]
-
-    F --> G[Behavior Analysis]
-    G --> H{Fraud Risk Level}
-
-    H -->|Low| I[Approve Payout]
-    H -->|Medium| J[Delayed Verification]
-    H -->|High| K[Flag / Reject Claim]
+`SECRET_KEY` is used for JWT signing. Generate one with:
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-## 8.1 Differentiation Strategy  
-### Genuine Worker vs Spoofed Actor
-
-We move beyond location-based validation to **impact-based validation**.
-
-### ✓ Genuine Worker
-- Actively engaged in deliveries  
-- Continuous movement along realistic routes  
-- Experiences drop in orders / earnings  
-- Matches environmental disruption patterns  
-
-### ✘ Spoofed Actor
-- Static or unrealistic movement patterns  
-- No delivery activity despite claimed presence  
-- Sudden location jumps (teleportation)  
-- No measurable income loss  
-
-> **Core Principle:**  
-> “Payouts are triggered by verified impact, not just presence.”
-
 ---
 
-## 8.2 Multi-Signal Data Intelligence
+## Authentication
 
-To detect coordinated fraud, our system analyzes **multiple data layers beyond GPS**:
+All endpoints except `/register`, `/login`, and `/refresh` are JWT-protected.
 
-### Location Signals
-- GPS coordinates  
-- Network-based location (cell tower / WiFi)  
-- IP-based geolocation  
+```
+POST /api/v1/workers/login
+→ { access_token, refresh_token, worker_id, shield, active_policy, weekly_earnings, ... }
 
----
-
-### Activity Signals
-- Delivery logs (orders accepted/completed)  
-- App active status  
-- Time spent in active sessions  
-
----
-
-### Behavioral Signals
-- Historical work patterns  
-- Consistency of working hours  
-- Claim frequency patterns  
-
----
-
-### Movement Signals
-- Route continuity (road-based movement)  
-- Speed consistency  
-- Detection of teleportation anomalies  
-
----
-
-### Environmental Correlation
-- Are multiple workers in same zone affected?  
-- Does disruption match actual API data?  
-
----
-
-### Group-Level Intelligence (Advanced)
-
-To detect syndicate behavior:
-- Identify clusters of users triggering claims simultaneously  
-- Detect identical patterns across multiple accounts  
-- Flag coordinated anomalies in the same region  
-
-> Helps identify organized fraud rings, not just individuals.
-
----
-
-## 8.3 UX Balance: Fairness for Honest Workers
-
-We ensure that fraud detection does not penalize genuine users.
-
-### Soft Flagging System
-- Suspicious claims are **flagged, not rejected immediately**
-
----
-
-### Confidence-Based Processing
-- High-confidence claims → instant payout  
-- Medium-risk claims → delayed validation  
-- High-risk claims → flagged for deeper checks  
-
----
-
-### Grace Handling (Network / Weather Issues)
-- Allow tolerance for:
-  - Temporary GPS loss  
-  - Network fluctuations  
-- Use historical and behavioral data to validate authenticity  
-
----
-
-### Transparent Feedback
-- Users are notified if:
-  - Claim is under review  
-  - Additional validation is required  
-
----
-
-### Trust Score System
-- Each worker has a dynamic trust score based on:
-  - Past behavior  
-  - Claim reliability  
-- High-trust users experience faster payouts  
-
----
-
-## 8.4 System Safeguards
-
-- One payout per event (event-based deduplication)  
-- Minimum time-in-zone requirement  
-- Activity + earnings validation before payout  
-- Adaptive thresholds during high-risk events  
-
----
-
-## Final Principle
-
-> “A disruption alone does not trigger a payout — only verified economic impact on an active, authentic worker does.”
-
----
-
-## Outcome
-
-Our architecture ensures:
-- Strong resistance to GPS spoofing  
-- Detection of coordinated fraud attacks  
-- Fair treatment of genuine workers  
-- Scalable, real-world reliability  
-
----
-## 9. Payment Safety & Idempotent Claim Processing
-
-To ensure financial integrity and prevent duplicate payouts, our system implements **idempotent payment logic** combined with **event-based claim control**.
-
----
-
-### 1. Event-Based Claim Uniqueness
-
-Each disruption is treated as a **single, uniquely identifiable event**.
-
-#### Event ID Generation:
-->event_id = hash(location + time_window + disruption_type)
-#### Example:
-- Location: Zone A  
-- Time: 7 PM – 9 PM  
-- Event: Heavy Rain  
-
-→ `event_id = RAIN_ZONEA_7PM_9PM`
-
----
-
-### Rule:
-> **One worker can receive only one payout per event.**
-
----
-
-### 2. Idempotent Payment Logic
-
-Our payment system is designed to be **idempotent**, meaning:
-
-> **Multiple identical requests will result in only one successful payout.**
-
----
-
-### How It Works
-
-Before processing any payout, the system checks:
-->(worker_id, event_id) → payment_status
-
-#### Cases:
-- x If already paid → reject duplicate request  
-- ✓ If not paid → process payout  
-
----
-
-### Idempotency Key
-
-Each payout request uses a unique key:
-idempotency_key = worker_id + event_id
-
-
-This ensures:
-- Retry-safe payments  
-- No double payouts due to:
-  - Network retries  
-  - System failures  
-  - Multiple triggers  
-
----
-
-### 3. Time Window Locking
-
-Each disruption is mapped to a **fixed time window**.
-
-- Even if the event is detected multiple times:
-  → Only one payout is allowed  
-
-Example:
-- Rain from 6–9 PM → single payout window  
-
----
-
-### 4. Atomic Transaction Handling
-
-Payout processing is handled as an **atomic transaction**:
-
-1. Validate claim  
-2. Check idempotency key  
-3. Lock record  
-4. Process payment  
-5. Mark as completed  
-
-> Ensures no race conditions or duplicate payouts.
-
----
-
-### 5. Anti-Exploitation Safeguards
-
-- Event-based deduplication  
-- Cooldown period after payout  
-- Cross-validation with activity + impact  
-
----
-
-### Key Principle
-
-> “Each disruption event results in at most one verified payout per worker — no duplicates, no retries, no exploitation.”
-
----
-
-## Outcome
-
-This approach ensures:
-- Financial safety  
-- Retry-safe system behavior  
-- Protection against duplicate and fraudulent payouts  
-- Robustness under high-load or adversarial conditions  
-
----
-## 10. Tech Stack
-
-Our architecture is designed to be **scalable, modular, and API-driven**, enabling real-time monitoring, AI integration, and automated payouts.
-
----
-
-###  Frontend (Mobile-First)
-- **Framework:** Flutter / React Native  
-- **Purpose:**
-  - Worker onboarding  
-  - Policy management  
-  - Real-time notifications (alerts, payouts)  
-
----
-
-###  Backend (Core Engine)
-- **Framework:** Node.js (Express) / Python (FastAPI)  
-- **Responsibilities:**
-  - API orchestration  
-  - Trigger engine (event detection)  
-  - Claim processing logic  
-  - Fraud validation pipeline  
-
----
-
-###  AI/ML Layer
-- **Language:** Python  
-- **Libraries:** scikit-learn, pandas, NumPy  
-- **Use Cases:**
-  - Risk prediction  
-  - Dynamic pricing  
-  - Fraud detection (anomaly detection)  
-  - Behavioral profiling  
-
----
-
-###  Database
-- **Primary DB:** PostgreSQL / MongoDB  
-- **Storage Includes:**
-  - User profiles  
-  - Policies  
-  - Claims  
-  - Event logs  
-  - Risk scores  
-
----
-
-###  External APIs
-- Weather → OpenWeatherMap  
-- Pollution → CPCB AQI  
-- Events → GDELT  
-- Maps → OpenStreetMap / simulated  
-
----
-
-###  Payments (Simulation)
-- Razorpay (Test Mode) / Stripe Sandbox  
-- Used for demonstrating instant payouts  
-
----
-
-###  Infrastructure (Optional / Scalable)
-- Cloud: AWS / GCP / Azure  
-- Services:
-  - Serverless functions (event triggers)  
-  - Background jobs (cron for monitoring)  
-
----
-
-### Analytics Dashboard
-- Worker → Earnings, coverage, payouts  
-- Admin → Users, premiums, payouts, fraud  
-- Metrics → Trends, claims, risk  
-- Tech → React, Node.js, MongoDB  
-- Features → Filters, real-time, reports
-   
----
-
-### System Architecture
-
-```mermaid
-flowchart LR
-    A[Mobile App] --> B[Backend API Server]
-
-    B --> C[Risk Engine AI]
-    B --> D[Trigger Engine]
-    B --> E[Fraud Detection Engine]
-
-    D --> F[External APIs]
-    F --> F1[Weather API]
-    F --> F2[AQI API]
-    F --> F3[Event API]
-
-    B --> G[Database]
-
-    E --> G
-    C --> G
-
-    B --> H[Payment Gateway Sandbox]
+POST /api/v1/workers/refresh
+Body: { refresh_token }
+→ { access_token }
 ```
 
-## 11. Development Plan
+Include in all subsequent requests:
+```
+Authorization: Bearer <access_token>
+```
 
-Our development follows a **phased, modular approach** aligned with the challenge timeline.
-
----
-
-###  Phase 1: Ideation & Design (Week 1–2)
-
-- Define persona and problem scenarios  
-- Design system workflow and architecture  
-- Define:
-  - Parametric triggers  
-  - Premium model  
-  - AI integration strategy  
-- Prepare README + initial prototype  
+| Token | Lifetime |
+|-------|----------|
+| Access Token | 15 minutes |
+| Refresh Token | 7 days |
 
 ---
 
-###  Phase 2: Core System Build (Week 3–4)
+## Endpoints
 
-- Implement:
-  - User onboarding  
-  - Policy management  
-  - Dynamic premium calculation  
-  - Trigger engine (API integration)  
-- Build:
-  - Automated claim flow  
-  - Basic validation system  
+### Workers (Public)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/workers/register` | Register with name, email, password, location, income |
+| POST | `/api/v1/workers/login` | Login → JWT pair + weekly_earnings + active_policy |
+| POST | `/api/v1/workers/refresh` | Exchange refresh token for new access token |
+| GET | `/api/v1/workers/{id}` | Get worker profile (JWT required) |
 
----
+### Risk (JWT required)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/risk/calculate` | Run ML model with live Open-Meteo weather |
 
-###  Phase 3: Optimization & Scale (Week 5–6)
+### Payment (JWT required)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/payment/process` | Buy/upgrade shield tier → auto-creates 7-day policy |
 
-- Implement advanced features:
-  - Fraud detection (anti-spoofing logic)  
-  - Trust scoring system  
-  - Real-time dashboards  
-
-- Integrate:
-  - Payment simulation (instant payouts)  
-  - Analytics for workers & admins  
-
----
-
-###  Testing & Simulation
-
-- Simulate disruption events:
-  - Rainstorms  
-  - AQI spikes  
-- Validate:
-  - Trigger accuracy  
-  - Payout correctness  
-  - Fraud detection effectiveness  
+### Events & Payouts (JWT required)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/event/trigger` | Detect weather event + issue payouts to all active workers |
+| POST | `/api/v1/payout/process` | Process single payout (idempotent — safe to retry) |
 
 ---
 
-###  Key Development Principle
+## Services Overview
 
-> “Build a modular system where each layer (risk, trigger, validation, payout) can evolve independently.”
-
----
-
-##  Outcome
-
-This architecture ensures:
-- Real-time responsiveness  
-- Scalable AI integration  
-- Strong fraud resilience  
-- Seamless user experience  
+| Service | Purpose |
+|---------|---------|
+| `weather_service.py` | Calls Open-Meteo API for `rainfall` + `AQI` from lat/lon |
+| `risk_service.py` | Loads scikit-learn model → computes risk, premium, estimated loss |
+| `event_service.py` | Infers event type (rain/pollution/none), loops over workers, triggers payouts |
+| `payout_service.py` | Idempotency engine — blocks duplicate payouts via DB unique constraint |
+| `validation_service.py` | Checks worker activity, policy validity (7-day window), location match |
 
 ---
 
+## Parametric Trigger Logic
 
+```
+rainfall >= 50 mm  →  "rain" event
+AQI >= 300         →  "pollution" event
+otherwise          →  "none" (no payout)
 
-##  12. Additional Innovations & Unique Value Propositions
+severity = "high"  if rainfall >= 80 or AQI >= 400
+           "medium" otherwise
 
-Beyond the core requirements, our solution introduces several **differentiators** that enhance fairness, intelligence, and real-world applicability.
-
----
-
-###  1. Impact-Based Insurance (Not Just Event-Based)
-
-Traditional parametric systems trigger payouts based only on events.
-
-We go further:
-
-> **Payout is based on actual income impact, not just the occurrence of a disruption.**
-
-- Uses earnings baseline vs actual performance  
-- Prevents unnecessary or unfair payouts  
-- Aligns insurance with real worker experience  
+payout_amount = max((rainfall * 1.2) + (aqi * 0.2), 0.0)
+```
 
 ---
 
-###  2. Hyperlocal Risk Intelligence
+## Running Tests
 
-Our system operates at a **zone-level (micro-location)** rather than city-level.
+```bash
+conda activate gw
+pytest tests/ -v
+```
 
-- Different premiums for different areas within the same city  
-- Detects:
-  - Flood-prone zones  
-  - High pollution pockets  
-
->  Enables precise, personalized insurance pricing
+Tests use mock weather injection for deterministic event results. No live API calls during tests.
 
 ---
 
-###  3. Multi-Factor Parametric Triggers
+## Database Setup
 
-Instead of single-condition triggers:
+Ensure your Supabase project has the following tables. Migrations can be applied by running:
 
-> **Triggers are based on multiple factors combined**
+```bash
+python -c "from app.core.db import Base, engine; Base.metadata.create_all(engine)"
+```
 
-Example:
-- Heavy rain + peak hours + active worker  
-
-This ensures:
-- Higher accuracy  
-- Reduced false positives  
-
----
-
-###  4. Zero-Touch Claim Experience
-
-- No claim filing  
-- No paperwork  
-- No manual approval  
-
-> Entire flow is automated:
-> Detection → Validation → Payout
-
----
-
-###  5. Behavioral Trust Scoring
-
-Each worker is assigned a **dynamic trust score** based on:
-
-- Activity consistency  
-- Claim history  
-- Behavioral patterns  
-
-> Used to:
-- Speed up genuine claims  
-- Apply stricter checks for suspicious users  
-
----
-
-###  6. Adversarial-Ready Architecture
-
-Our system is designed to handle **coordinated fraud attacks**:
-
-- Multi-signal validation (beyond GPS)  
-- Group-level anomaly detection  
-- Event-based payout locking  
-
->  Built to be resilient in real-world adversarial environments  
-
----
-
-###  7. Adaptive Weekly Pricing
-
-- Premium adjusts based on:
-  - Forecasted risk  
-  - Worker behavior  
-- Enables:
-  - Fair pricing  
-  - Dynamic coverage recommendations  
-
----
-
-###  8. Worker-Centric Insights
-
-The platform provides meaningful insights:
-
-- “Earnings protected this week”  
-- “Risk forecast for upcoming days”  
-
-> Makes insurance transparent and valuable, not just transactional  
-
----
-
-###  9. Modular & Scalable Architecture
-
-- Each component (risk, trigger, validation, payout) is independent  
-- Allows:
-  - Easy scaling  
-  - Future integrations  
-  - Continuous improvement  
-
----
-
-###  Final Differentiator
-
-> “We don’t just insure against disruption — we intelligently measure its impact and protect real income in real time.”
-
----
-
-##  Overall Value
-
-Our solution combines:
-- AI-driven intelligence  
-- Real-time automation  
-- Fraud resilience  
-- Worker-centric design  
-
-to create a **next-generation insurance model for the gig economy**.
-
----
-
-## Demo & Repository
-
-*  Demo Video: [Insert Link]
-
----
-
-#  Final Statement
-
-> Our solution transforms insurance from a reactive, manual process into a **proactive, automated safety net** that protects gig workers’ income in real time.
-
----
-
-## React UI (Demo)
-
-This repo includes a React "premium dashboard" under `frontend/` that calls the FastAPI endpoints.
-
-1. Start the backend:
-   - Set `DATABASE_URL` for PostgreSQL (example):
-     `postgresql+psycopg2://postgres:postgres@localhost:5432/gig_insurance`
-   - Run:
-     `uvicorn app.main:app --reload`
-2. Start the frontend:
-   - Go to `frontend/`
-   - Run:
-     `npm install`
-     `npm run dev`
-
-The UI expects the API at `http://127.0.0.1:8000` by default (you can change it in the frontend code via `VITE_API_BASE_URL`).
-
----
-
-## Run Backend (Runnable Defaults)
-
-This backend is runnable immediately using SQLite dev DB (no Postgres required) unless you set `DATABASE_URL`.
-
-From `backend/` folder:
-1. Start:
-   - `run_backend.cmd`
-2. Test health:
-   - `GET http://127.0.0.1:8000/`
-
-For PostgreSQL + Postman:
-1. Create DB `gig_insurance`
-2. Set `DATABASE_URL` to your Postgres connection string.
-3. Restart backend.
-
-
+Tables:
+- `workers` — includes `shield` FK to `shields.p_id`
+- `shields` — seed with 4 rows: (0, No Shield), (1, Basic), (2, Pro), (3, Elite)
+- `policies` — auto-created on `/payment/process`
+- `events`, `payouts`, `risk_profiles`
