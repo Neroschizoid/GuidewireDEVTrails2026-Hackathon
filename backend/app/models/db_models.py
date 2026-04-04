@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -70,3 +70,22 @@ class PayoutDB(Base):
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, default="processed")
     idempotency_key: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+
+
+class WorkerSessionDB(Base):
+    __tablename__ = "sessions"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    worker_id: Mapped[str] = mapped_column(String, ForeignKey("workers.id"), nullable=False, index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String, default="active", nullable=False)  # active | ended
+
+
+class TriggerStateDB(Base):
+    __tablename__ = "trigger_state"
+    __table_args__ = (UniqueConstraint("session_id", "trigger_type", name="uq_session_trigger"),)
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    session_id: Mapped[str] = mapped_column(String, ForeignKey("sessions.id"), nullable=False, index=True)
+    trigger_type: Mapped[str] = mapped_column(String, nullable=False)  # rain | aqi
+    active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    last_triggered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)

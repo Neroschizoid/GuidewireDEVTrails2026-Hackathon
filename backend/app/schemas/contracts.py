@@ -133,3 +133,42 @@ class ProcessPayoutRequest(BaseModel):
     worker_id: str
     event_id: str
     amount: float = Field(ge=0)
+
+
+# ─── Session ──────────────────────────────────────────────────
+class SessionStartRequest(BaseModel):
+    lat: float
+    lon: float
+
+
+class SessionStartResponse(BaseModel):
+    session_id: str
+    started_at: datetime
+
+
+class SessionEndResponse(BaseModel):
+    session_id: str
+    ended_at: datetime
+
+
+# ─── Check Triggers ───────────────────────────────────────────
+class CheckTriggerRequest(BaseModel):
+    session_id: str
+    lat: float
+    lon: float
+    temperature: float = Field(ge=-30, le=70, default=30)
+    peak: bool = True
+    location_risk: float = Field(ge=0, le=1, default=0.5)
+    hours: float = Field(ge=0, le=24, default=2)
+    simulate: bool = False  # True injects rain=100, aqi=350 for demo
+
+
+class CheckTriggerResponse(BaseModel):
+    risk_score: float
+    rain: float
+    aqi: float
+    triggered: bool
+    trigger_type: Optional[str] = None   # "rain" | "aqi" | None
+    payout: Optional[float] = None
+    claim_id: Optional[str] = None
+    message: str = ""

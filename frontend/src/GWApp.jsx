@@ -100,9 +100,12 @@ export default function GWApp() {
   const [apiStatus, setApiStatus] = useState(null);
   const [error, setError] = useState(null);
 
-  const [online, setOnline] = useState(true);
+  // Online/Offline session management
+  const [online, setOnline] = useState(false);  // default OFFLINE on login
+  const [sessionId, setSessionId] = useState(null);
   const [onlineSince, setOnlineSince] = useState(() => Date.now());
   const timerRef = useRef(null);
+  const pollRef = useRef(null);
   const [tick, setTick] = useState(0);
   useEffect(() => {
     timerRef.current = setInterval(() => setTick((x) => x + 1), 1000);
@@ -122,14 +125,10 @@ export default function GWApp() {
     }
   }, []);
 
-  const [mlForm, setMlForm] = useState({
-    temperature: 30,
-    peak: true,
-    location_risk: 0.5,
-    hours: 2,
-    base_price: 20,
-  });
-  const [policyForm, setPolicyForm] = useState({ base_price: 20, days: 7 });
+  // Trigger check state
+  const [triggerResult, setTriggerResult] = useState(null);
+  const [lastChecked, setLastChecked] = useState(null);
+  const [autoClaimStatus, setAutoClaimStatus] = useState("idle"); // idle | checking | triggered | none
 
   const [riskResult, setRiskResult] = useState(null);
   const [policyResult, setPolicyResult] = useState(null);
@@ -180,10 +179,14 @@ export default function GWApp() {
     return shieldsList.find(s => s.p_id === (auth?.shield || 0)) || shieldsList[0];
   }, [auth?.shield, shieldsList]);
 
-  useEffect(() => {
-    setMlForm((p) => ({ ...p, base_price: tier.base }));
-    setPolicyForm((p) => ({ ...p, base_price: tier.base }));
-  }, [tier.base]);
+  const [mlForm, setMlForm] = useState({
+    temperature: 30,
+    peak: true,
+    location_risk: 0.5,
+    hours: 2,
+    base_price: 20,
+  });
+  const [policyForm, setPolicyForm] = useState({ base_price: 20, days: 7 });
 
   const totalSecured = auth?.weekly_earnings || 0;
   const weeklyGoal = 10000;
@@ -203,6 +206,16 @@ export default function GWApp() {
     setPayoutResult(null);
     setApiStatus(null);
     setError(null);
+    setTriggerResult(null);
+    setLastChecked(null);
+    setAutoClaimStatus("idle");
+  }
+
+  function stopPolling() {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
   }
 
   async function handleRegister() {
@@ -223,6 +236,10 @@ export default function GWApp() {
         refresh_token: data.refresh_token || "",
       };
       setAuth(worker);
+      // Always start OFFLINE on login/register
+      setOnline(false);
+      setSessionId(null);
+      stopPolling();
       resetSession();
       setApiStatus(null);
       setTab("dashboard");
@@ -249,6 +266,10 @@ export default function GWApp() {
         access_token: data.access_token || "",
         refresh_token: data.refresh_token || "",
       });
+      // Always start OFFLINE on login
+      setOnline(false);
+      setSessionId(null);
+      stopPolling();
       resetSession();
       setApiStatus(null);
       setTab("dashboard");
@@ -270,17 +291,16 @@ export default function GWApp() {
       const payload = { 
         worker_id: auth.worker_id, 
         p_id: selectedShopTier,
-        risk_score: riskResult?.risk_score || 0.0,
-        premium: riskResult?.premium_quote || shopTier.price,
+        risk_score: triggerResult?.risk_score || riskResult?.risk_score || 0.0,
+        premium: triggerResult?.risk_score ? shopTier.price * triggerResult.risk_score : shopTier.price,
         days: policyForm.days || 7
       };
       const data = await apiPost("/api/v1/payment/process", payload);
       if (data.status) {
          setAuth(prev => ({ ...prev, shield: selectedShopTier, active_policy: true }));
-         setApiStatus("Shield Upgrade Successful!");
+         setApiStatus("Shield Upgrade Successful! You can now go Online to start monitoring.");
          setMlForm((p) => ({ ...p, base_price: shopTier.base }));
          setPolicyForm((p) => ({ ...p, base_price: shopTier.base }));
-         resetSession();
       } else {
          setError("Payment failed.");
          setApiStatus(null);
@@ -291,66 +311,93 @@ export default function GWApp() {
     }
   }
 
-  async function runML() {
+  // ─── Session Lifecycle ───────────────────────────────────────
+  async function goOnline() {
     if (!auth) return;
     setError(null);
-    setApiStatus("Running ML risk…");
+    setApiStatus("Starting tracking session…");
     try {
-      const payload = {
-        worker_id: auth.worker_id,
-        ...mlForm,
+      const data = await apiPost("/api/v1/session/start", {
         lat: geoCoords.lat,
         lon: geoCoords.lon,
-        location_risk: mlForm.location_risk,
-      };
-      const data = await apiPost("/api/v1/risk/calculate", payload);
-      setRiskResult(data);
+      });
+      setSessionId(data.session_id);
+      setOnline(true);
       setApiStatus(null);
+      setAutoClaimStatus("checking");
+      // Fire immediately, then every 2.5 minutes
+      await runCheckTriggers(data.session_id, false);
+      pollRef.current = setInterval(() => runCheckTriggers(data.session_id, false), 150_000);
     } catch (e) {
       setError(String(e?.message || e));
       setApiStatus(null);
+    }
+  }
+
+  async function goOffline() {
+    if (!auth) return;
+    stopPolling();
+    setOnline(false);
+    setAutoClaimStatus("idle");
+    if (sessionId) {
+      try {
+        await apiPost("/api/v1/session/end", {});
+      } catch { /* ignore — session will expire naturally */ }
+      setSessionId(null);
+    }
+  }
+
+  // ─── Core automation: call /triggers/check ───────────────────
+  async function runCheckTriggers(sid, simulate = false) {
+    if (!auth) return;
+    const sId = sid || sessionId;
+    if (!sId) return;
+    setAutoClaimStatus("checking");
+    try {
+      const data = await apiPost("/api/v1/triggers/check", {
+        session_id: sId,
+        lat: geoCoords.lat,
+        lon: geoCoords.lon,
+        temperature: mlForm.temperature,
+        peak: mlForm.peak,
+        location_risk: mlForm.location_risk,
+        hours: mlForm.hours,
+        simulate,
+      });
+      setTriggerResult(data);
+      setLastChecked(new Date());
+      setAutoClaimStatus(data.triggered ? "triggered" : "none");
+      if (data.triggered && data.payout > 0) {
+        setAuth(prev => ({ ...prev, weekly_earnings: (prev.weekly_earnings || 0) + Number(data.payout) }));
+      }
+    } catch (e) {
+      setAutoClaimStatus("none");
+      // Don't surface polling errors as loud UI errors
     }
   }
 
   function goToStore() {
-    if (riskResult) {
-      const recTier = riskPct >= 75 ? 3 : riskPct >= 45 ? 2 : 1;
-      setSelectedShopTier(recTier);
-    }
+    const recTier = triggerResult
+      ? (triggerResult.risk_score >= 0.75 ? 3 : triggerResult.risk_score >= 0.45 ? 2 : 1)
+      : 1;
+    setSelectedShopTier(recTier);
     setTab("store");
   }
 
-  function predictedPayout() {
-    return 150.0;
-  }
+  // Cleanup polling on unmount
+  useEffect(() => () => stopPolling(), []);
 
-  async function activateTrigger() {
-    if (!auth) return;
-    setError(null);
-    setApiStatus("Activating parametric trigger…");
-    try {
-      const eventPayload = {
-        location: auth.location,
-        lat: geoCoords.lat,
-        lon: geoCoords.lon,
-      };
-      const ev = await apiPost("/api/v1/event/trigger", eventPayload);
-      setEventResult(ev);
-      const amt = predictedPayout();
-      const po = await apiPost("/api/v1/payout/process", {
-        worker_id: auth.worker_id,
-        event_id: ev.event_id,
-        amount: amt,
-      });
-      setPayoutResult(po);
-      if (po.amount > 0 && ev.type !== "none") {
-         setAuth(prev => ({ ...prev, weekly_earnings: (prev.weekly_earnings || 0) + Number(po.amount) }));
-      }
-      setApiStatus(null);
-    } catch (e) {
-      setError(String(e?.message || e));
-      setApiStatus(null);
+  // Stop tracking & session when user logs out
+  function handleLogout() {
+    stopPolling();
+    if (sessionId) {
+      apiPost("/api/v1/session/end", {}).catch(() => {});
     }
+    setSessionId(null);
+    setOnline(false);
+    setAuth(null);
+    setTab("dashboard");
+    resetSession();
   }
 
   const nameInitial = (auth?.name || "U").trim().slice(0, 1).toUpperCase();
@@ -502,54 +549,52 @@ export default function GWApp() {
                 <div className="gwCard gwGlow" style={{ marginTop: 16 }}>
                   <div className="gwCardHead">
                     <div>
-                      <div className="gwCardTitle">Upgrade Path</div>
-                      <div className="gwMuted">Run ML and buy policy for your tier.</div>
+                      <div className="gwCardTitle">Protection Status</div>
+                      <div className="gwMuted">{auth?.active_policy ? "Shield active — go to Tracker to start monitoring." : "Purchase a shield in the Store to enable automated protection."}</div>
                     </div>
-                    <div className="gwTierPill">Current Tier: {tier.name}</div>
+                    <div className="gwTierPill">Tier: {tier.name}</div>
                   </div>
-                  <div className="gwFormGrid">
-                     <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, padding: 8 }}>
-                        Using live weather for prediction: {geoCoords.lat.toFixed(4)}, {geoCoords.lon.toFixed(4)}
-                     </div>
+                  <div className="gwInlineStats" style={{ marginTop: 12 }}>
+                    <div className="gwStat">
+                      <div className="gwStatLabel">RISK SCORE</div>
+                      <div className="gwStatValue">{triggerResult ? triggerResult.risk_score.toFixed(2) : "—"}</div>
+                    </div>
+                    <div className="gwStat">
+                      <div className="gwStatLabel">RAINFALL</div>
+                      <div className="gwStatValue">{triggerResult ? `${triggerResult.rain.toFixed(1)} mm` : "—"}</div>
+                    </div>
+                    <div className="gwStat">
+                      <div className="gwStatLabel">AQI</div>
+                      <div className="gwStatValue">{triggerResult ? triggerResult.aqi.toFixed(0) : "—"}</div>
+                    </div>
                   </div>
-                  <div className="gwRow" style={{ marginTop: 12 }}>
-                    <button className="gwPrimaryBtn" onClick={runML}>
-                      Run ML Model
+                  {auth?.active_policy ? (
+                    <button className="gwPrimaryBtn" style={{ marginTop: 12 }} onClick={() => setTab("tracker")}>
+                      {online ? "View Live Monitoring" : "Go Online to Start Monitoring"}
                     </button>
-                    {riskResult && (auth?.shield || 0) < (riskPct >= 75 ? 3 : riskPct >= 45 ? 2 : 1) ? (
-                      <button className="gwSecondaryBtn" onClick={goToStore}>
-                        Go to Policy Store (Upgrade Recommended)
-                      </button>
-                    ) : null}
-                  </div>
-                  {riskResult ? (
-                    <div className="gwInlineStats">
-                      <div className="gwStat">
-                        <div className="gwStatLabel">Risk</div>
-                        <div className="gwStatValue">{riskResult.risk_score.toFixed(2)}</div>
-                      </div>
-                      <div className="gwStat">
-                        <div className="gwStatLabel">Premium Quote</div>
-                        <div className="gwStatValue">₹{Number(riskResult.premium_quote).toFixed(2)}</div>
-                      </div>
-                      <div className="gwStat">
-                        <div className="gwStatLabel">Est. Loss</div>
-                        <div className="gwStatValue">₹{Number(riskResult.estimated_loss).toFixed(0)}</div>
-                      </div>
-                    </div>
-                  ) : null}
+                  ) : (
+                    <button className="gwSecondaryBtn" style={{ marginTop: 12 }} onClick={() => setTab("store")}>
+                      Visit Policy Store
+                    </button>
+                  )}
                 </div>
               </div>
             ) : null}
 
             {tab === "tracker" ? (
               <div className="gwPage">
+
+                {/* ─── Session Control Ring ─── */}
                 <div className="gwCard gwGlow">
                   <div className="gwCardTitle">Tracker</div>
                   <div className="gwTrackerHero">
-                    <div className={online ? "gwRing gwRingGreen" : "gwRing gwRingRed"}>
+                    <div
+                      className={online ? "gwRing gwRingGreen" : "gwRing gwRingRed"}
+                      onClick={online ? goOffline : (auth?.active_policy ? goOnline : undefined)}
+                      style={{ cursor: auth?.active_policy ? "pointer" : "not-allowed" }}
+                    >
                       <div className="gwRingInner">
-                        <div className="gwRingText">{online ? "GO ONLINE" : "GO OFFLINE"}</div>
+                        <div className="gwRingText">{online ? "ONLINE" : "OFFLINE"}</div>
                       </div>
                     </div>
                     <div className="gwTrackerMeta">
@@ -558,61 +603,133 @@ export default function GWApp() {
                         <div className="gwMetaValue">{online ? onlineDuration : "00:00"}</div>
                       </div>
                       <div className="gwMetaLine">
-                        <div className="gwMetaLabel">MONITORED RISK</div>
-                        <div className="gwMetaValue">Rain</div>
+                        <div className="gwMetaLabel">NEXT CHECK</div>
+                        <div className="gwMetaValue">{online ? "Auto / 2.5 min" : "Offline"}</div>
                       </div>
                       <div className="gwMetaLine">
                         <div className="gwMetaLabel">PROTECTED LIMIT</div>
                         <div className="gwMetaValue">₹{tier.limit}</div>
                       </div>
                       <div className="gwRow" style={{ marginTop: 12 }}>
-                        <button className={online ? "gwToggle gwToggleOn" : "gwToggle"} onClick={() => setOnline(true)}>
-                          Online
+                        <button
+                          className={!online ? "gwPrimaryBtn" : "gwSecondaryBtn"}
+                          onClick={online ? goOffline : goOnline}
+                          disabled={!auth?.active_policy}
+                          title={!auth?.active_policy ? "Purchase a shield in the Store first" : ""}
+                        >
+                          {online ? "Stop Monitoring" : "GO ONLINE"}
                         </button>
-                        <button className={!online ? "gwToggle gwToggleOn" : "gwToggle"} onClick={() => setOnline(false)}>
-                          Offline
-                        </button>
+                      </div>
+                      {!auth?.active_policy ? (
+                        <div className="gwMuted" style={{ fontSize: 11, marginTop: 6 }}>Purchase a shield tier to enable monitoring.</div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ─── Risk Engine Monitor ─── */}
+                <div className="gwCard" style={{ marginTop: 12 }}>
+                  <div className="gwCardHead">
+                    <div className="gwCardTitle">Risk Engine</div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <span style={{
+                        fontSize: 11, padding: "2px 8px", borderRadius: 999,
+                        background: autoClaimStatus === "triggered" ? "rgba(36,214,100,.25)" :
+                                    autoClaimStatus === "checking" ? "rgba(255,190,30,.25)" :
+                                    "rgba(255,255,255,.08)",
+                        color: autoClaimStatus === "triggered" ? "#24d664" :
+                               autoClaimStatus === "checking" ? "#ffbe1e" : "rgba(255,255,255,.5)"
+                      }}>
+                        {autoClaimStatus === "triggered" ? "✓ TRIGGERED" :
+                         autoClaimStatus === "checking" ? "⟳ CHECKING" :
+                         autoClaimStatus === "none" ? "● MONITORING" : "○ IDLE"}
+                      </span>
+                      <button className="gwSecondaryBtn" style={{ padding: "4px 10px", fontSize: 12 }}
+                        onClick={() => runCheckTriggers(sessionId, false)}
+                        disabled={!online}
+                      >Refresh</button>
+                    </div>
+                  </div>
+                  <div className="gwInlineStats" style={{ marginTop: 10 }}>
+                    <div className="gwStat">
+                      <div className="gwStatLabel">RAINFALL</div>
+                      <div className="gwStatValue" style={{ color: (triggerResult?.rain || 0) > 50 ? "#ff6b6b" : undefined }}>
+                        {triggerResult ? `${triggerResult.rain.toFixed(1)} mm` : "—"}
+                      </div>
+                      <div className="gwMuted" style={{ fontSize: 10 }}>Threshold: &gt;50mm</div>
+                    </div>
+                    <div className="gwStat">
+                      <div className="gwStatLabel">AQI</div>
+                      <div className="gwStatValue" style={{ color: (triggerResult?.aqi || 0) > 200 ? "#ff6b6b" : undefined }}>
+                        {triggerResult ? triggerResult.aqi.toFixed(0) : "—"}
+                      </div>
+                      <div className="gwMuted" style={{ fontSize: 10 }}>Threshold: &gt;200</div>
+                    </div>
+                    <div className="gwStat">
+                      <div className="gwStatLabel">RISK SCORE</div>
+                      <div className="gwStatValue">
+                        {triggerResult ? (triggerResult.risk_score * 100).toFixed(0) + "/100" : "—"}
+                      </div>
+                      <div className="gwMuted" style={{ fontSize: 10 }}>
+                        {lastChecked ? `${lastChecked.toLocaleTimeString()}` : "Not checked yet"}
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  <div className="gwDivider" />
-
-                  <div className="gwTriggerCard">
-                    <div className="gwTriggerTop">
-                      <div className="gwTriggerTitle">PARAMETRIC TRIGGER</div>
-                      <div className="gwTriggerAmount">+ ₹{Math.round(predictedPayout())}</div>
+                {/* ─── Protection Status / Auto Claim ─── */}
+                <div className="gwCard" style={{ marginTop: 12 }}>
+                  <div className="gwCardHead">
+                    <div className="gwCardTitle">Auto Protection</div>
+                    <div style={{ fontSize: 12, color: online ? "#24d6ff" : "rgba(255,255,255,.4)" }}>
+                      {online ? "● Active" : "○ Inactive"}
                     </div>
-                    <div className="gwTriggerSub">Heavy rain automatically detected in your zone. ({geoCoords.lat.toFixed(4)}, {geoCoords.lon.toFixed(4)})</div>
-                    <div className="gwRow" style={{ marginTop: 12 }}>
-                      <button className="gwPrimaryBtn" onClick={activateTrigger} disabled={!auth?.active_policy}>
-                        Activate Trigger
-                      </button>
-                      <button
-                        className="gwSecondaryBtn"
-                        onClick={activateTrigger}
-                        disabled={!auth?.active_policy || !eventResult}
-                        title="Idempotent payout check"
-                      >
-                        Trigger Again
-                      </button>
+                  </div>
+                  <div className="gwList">
+                    <div className="gwListItem">
+                      <span className={online ? "dot dotGreen" : "dot dotRed"} />
+                      Monitoring: {online ? "Online & Tracking" : "Offline"}
                     </div>
-                    {payoutResult ? (
-                      <div className="gwPayoutBox">
+                    <div className="gwListItem">
+                      <span className={triggerResult?.triggered ? "dot dotAmber" : "dot dotBlue"} />
+                      Last Event: {triggerResult?.triggered ? triggerResult.trigger_type?.toUpperCase() + " DETECTED" : "None"}
+                    </div>
+                    <div className="gwListItem">
+                      <span className={autoClaimStatus === "triggered" ? "dot dotGreen" : "dot dotPurple"} />
+                      Claim Status: {autoClaimStatus === "triggered" ? "Auto-created ✓" : autoClaimStatus === "checking" ? "Processing…" : "Standing by"}
+                    </div>
+                    {triggerResult?.triggered && triggerResult?.payout ? (
+                      <div className="gwPayoutBox" style={{ marginTop: 8 }}>
                         <div className="gwPayoutTop">
-                          <div className="gwPayoutLabel">SECURED PALYOUT</div>
-                          <div className="gwPayoutValue">{payoutResult.status === "already_processed" ? "IDEMPOTENT OK" : "PAYOUT READY"}</div>
+                          <div className="gwPayoutLabel">AUTO CLAIM SECURED</div>
+                          <div className="gwPayoutValue">PAYOUT READY</div>
                         </div>
                         <div className="gwPayoutAmount">
-                          Amount: <strong>₹{Number(payoutResult.amount).toFixed(2)}</strong>
+                          Amount: <strong>₹{Number(triggerResult.payout).toFixed(2)}</strong>
                         </div>
-                        <div className="gwMuted" style={{ marginTop: 6, fontSize: 12 }}>
-                          payout_id: {payoutResult.payout_id}
+                        <div className="gwMuted" style={{ marginTop: 4, fontSize: 11 }}>
+                          {triggerResult.message}
                         </div>
                       </div>
                     ) : null}
                   </div>
+                  <div className="gwRow" style={{ marginTop: 12 }}>
+                    <button
+                      className="gwSecondaryBtn"
+                      onClick={() => runCheckTriggers(sessionId, true)}
+                      disabled={!online}
+                      title="Inject simulated heavy rain for demo"
+                    >
+                      Simulate Event
+                    </button>
+                    {triggerResult && triggerResult.risk_score >= 0.45 && (auth?.shield || 0) < (triggerResult.risk_score >= 0.75 ? 3 : 2) ? (
+                      <button className="gwSecondaryBtn" onClick={goToStore}>
+                        Upgrade Shield
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
+
               </div>
             ) : null}
 
@@ -726,11 +843,7 @@ export default function GWApp() {
                   <div className="gwRow" style={{ marginTop: 14 }}>
                     <button
                       className="gwSecondaryBtn"
-                      onClick={() => {
-                        setAuth(null);
-                        setTab("dashboard");
-                        resetSession();
-                      }}
+                      onClick={handleLogout}
                     >
                       Logout
                     </button>
