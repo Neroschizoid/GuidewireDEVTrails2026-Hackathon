@@ -230,3 +230,21 @@ risk_profiles   — worker_id (FK), risk_score, timestamp
 ```
 
 **Key constraint:** `UNIQUE(worker_id, event_id)` on `payouts` enforces idempotency at the database level — no double payouts even under concurrent load.
+
+##  Pitch Deck
+
+Get a complete overview of the project including the problem, solution, architecture, and business model.
+
+ **Pitch Deck Link:**  
+[View Pitch Deck](https://docs.google.com/presentation/d/1mjpnJ5JSXjX-rH-KKICJvqSdCaiSUHZN/edit?usp=drive_link&ouid=117303270450776072415&rtpof=true&sd=true)
+
+---
+
+### Contents of the Deck
+- Problem Statement  
+- Solution Overview  
+- Product Workflow  
+- System Architecture  
+- Tech Stack  
+- Business Model  
+- Future Scope  
