@@ -884,35 +884,43 @@ export default function GWApp() {
     }
   }
 
-  async function handleRunML() {
-    if (!auth) return;
-    setError(null);
-    setApiStatus("Analyzing current risk profile...");
-    try {
-      const payload = {
-        worker_id: auth.worker_id,
-        lat: geoCoords.lat,
-        lon: geoCoords.lon,
-        temperature: mlForm.temperature,
-        peak: mlForm.peak,
-        location_risk: mlForm.location_risk,
-        hours: mlForm.hours,
-        base_price: mlForm.base_price,
-      };
-      const data = await apiPost("/api/v1/risk/calculate", payload);
-      setRiskResult(data);
-      if (data?.weather_unavailable) {
-        setError(`Live weather unavailable: ${data.weather_error || "Open-Meteo request failed."}`);
-      } else {
-        setError(null);
-      }
-      setApiStatus(null);
-    } catch (e) {
-      setError(String(e?.message || e));
-      setApiStatus(null);
-    }
-  }
+const [mlLoading, setMlLoading] = useState(false);
 
+async function handleRunML() {
+  if (!auth || mlLoading) return; // ✅ prevents spam
+
+  setMlLoading(true);
+  setError(null);
+  setApiStatus("Analyzing current risk profile...");
+
+  try {
+    const payload = {
+      worker_id: auth.worker_id,
+      lat: geoCoords.lat,
+      lon: geoCoords.lon,
+      temperature: mlForm.temperature,
+      peak: mlForm.peak,
+      location_risk: mlForm.location_risk,
+      hours: mlForm.hours,
+      base_price: mlForm.base_price,
+    };
+
+    const data = await apiPost("/api/v1/risk/calculate", payload);
+    setRiskResult(data);
+
+    if (data?.weather_unavailable) {
+      setError(`Live weather unavailable: ${data.weather_error || "Open-Meteo request failed."}`);
+    } else {
+      setError(null);
+    }
+
+  } catch (e) {
+    setError(String(e?.message || e));
+  } finally {
+    setApiStatus(null);
+    setMlLoading(false); // ✅ unlock
+  }
+}
 
   // ─── Session Lifecycle ───────────────────────────────────────
   async function goOnline() {
@@ -951,8 +959,10 @@ export default function GWApp() {
   }
 
   // ─── Core automation: call /triggers/check ───────────────────
+  const [checking, setChecking] = useState(false);
   async function runCheckTriggers(sid) {
-    if (!auth) return;
+  if (!auth || checking) return;
+  setChecking(true);
     const sId = sid || sessionId;
     if (!sId) return;
     setAutoClaimStatus("checking");
@@ -988,6 +998,9 @@ export default function GWApp() {
       setAutoClaimStatus("none");
       setError(`Tracker refresh failed: ${String(e?.message || e)}`);
     }
+    finally {
+  setChecking(false);
+}
   }
 
   function goToStore() {
@@ -1339,8 +1352,13 @@ export default function GWApp() {
                       <div className="gwMuted" style={{ fontSize: 13, marginBottom: 12 }}>
                         Analyze your current environment (weather, location, hours) to find the best protection tier.
                       </div>
-                      <button className={`gwPrimaryBtn ${apiStatus?.includes('Analyzing') ? 'gwPulseScan' : ''}`} onClick={handleRunML} style={{ marginTop: 0 }}>
-                        Run ML Risk Scan
+                      <button
+                        className={`gwPrimaryBtn ${mlLoading ? 'gwPulseScan' : ''}`}
+                        onClick={handleRunML}
+                        disabled={mlLoading}
+                        style={{ marginTop: 0 }}
+                      >
+                        {mlLoading ? "Scanning..." : "Run ML Risk Scan"}
                       </button>
                     </div>
                   )}
