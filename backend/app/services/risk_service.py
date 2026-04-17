@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 from app.ml.inference import run_inference
 from app.models.db_models import RiskProfileDB, WorkerDB
 from app.schemas.contracts import RiskRequest, RiskResponse
-from app.services.weather_service import fetch_live_weather, get_peak_hour
+from app.services.analytics_service import estimate_location_risk
+from app.services.weather_service import fetch_weather_snapshot, get_peak_hour
 
 
 def calculate_risk(payload: RiskRequest, db: Session) -> RiskResponse:
@@ -17,13 +18,25 @@ def calculate_risk(payload: RiskRequest, db: Session) -> RiskResponse:
         raise HTTPException(status_code=404, detail="Worker not found")
 
     # Fetch Rainfall, AQI, and Temperature
-    rainfall, aqi, temp = fetch_live_weather(payload.lat, payload.lon)
+    snapshot = fetch_weather_snapshot(payload.lat, payload.lon)
+    rainfall = snapshot.current_rainfall
+    aqi = snapshot.current_aqi
+    temp = snapshot.current_temperature
     peak = get_peak_hour()
-    loc_risk = 0.6  # static as requested
+    forecast_rainfall = max(snapshot.next_24h_rainfall, rainfall)
+    forecast_aqi = max(snapshot.next_24h_peak_aqi, aqi)
+    loc_risk = estimate_location_risk(
+        db=db,
+        location=worker.location,
+        current_rainfall=rainfall,
+        current_aqi=aqi,
+        forecast_rainfall=forecast_rainfall,
+        forecast_aqi=forecast_aqi,
+    )
 
     output = run_inference(
-        rainfall=rainfall,
-        aqi=aqi,
+        rainfall=max(rainfall, forecast_rainfall / 4.0),
+        aqi=max(aqi, forecast_aqi),
         temperature=temp,
         peak=bool(peak),
         location_risk=loc_risk,
@@ -58,7 +71,14 @@ def calculate_risk(payload: RiskRequest, db: Session) -> RiskResponse:
         fraud_flag=output.fraud_flag,
         recommended_tier=rec_tier,
         recommended_tier_name=rec_name,
+        rain=round(rainfall, 2),
+        aqi=round(aqi, 2),
+        location_risk=loc_risk,
+        forecast_rainfall=round(forecast_rainfall, 2),
+        forecast_aqi=round(forecast_aqi, 2),
         temperature=temp,
         peak_status=peak,
+        weather_unavailable=not snapshot.available,
+        weather_error=snapshot.error,
         timestamp=now,
     )

@@ -149,7 +149,10 @@ uvicorn app.main:app --reload
 Create `backend/.env`:
 ```
 DATABASE_URL=postgresql://...your supabase connection string...
-SECRET_KEY=your_jwt_secret_here
+JWT_SECRET=your_jwt_secret_here
+CORS_ORIGINS=http://127.0.0.1:5173,http://localhost:5173
+ADMIN_EMAILS=admin@example.com
+COOKIE_SECURE=false
 ```
 
 ### Frontend
@@ -161,6 +164,11 @@ npm run dev
 ```
 
 App runs at `http://localhost:5173`. Backend must be running at `http://localhost:8000`.
+
+Create `frontend/.env` if needed:
+```env
+VITE_API_URL=http://127.0.0.1:8000
+```
 
 ---
 

@@ -24,7 +24,7 @@ def _infer_event_type(rainfall: float, aqi: float, force_event_type: str | None)
 
 
 def trigger_event(payload: TriggerEventRequest, db: Session) -> TriggerEventResponse:
-    rainfall, aqi = fetch_live_weather(payload.lat, payload.lon)
+    rainfall, aqi, _temperature = fetch_live_weather(payload.lat, payload.lon)
     event_type = _infer_event_type(rainfall, aqi, payload.force_event_type)
     severity = "high" if rainfall >= 80 or aqi >= 400 else "medium"
 

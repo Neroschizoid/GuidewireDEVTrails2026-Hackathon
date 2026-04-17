@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { apiGet, apiPost } from "./api";
+import { apiGet, apiLogout, apiPost } from "./api";
+import { clearAuthSession, getStoredAuth, setAuthSession } from "./authStorage";
 
 function Money({ value }) {
   if (value === null || value === undefined) return <span className="hint">—</span>;
@@ -62,18 +63,10 @@ export default function App() {
   });
   const [payoutResult, setPayoutResult] = useState(null);
 
-  const AUTH_KEY = "gw_worker_auth_v1";
   const THEME_KEY = "gw_theme_v1";
 
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "neon");
-  const [auth, setAuth] = useState(() => {
-    try {
-      const raw = localStorage.getItem(AUTH_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [auth, setAuth] = useState(() => getStoredAuth());
 
   useEffect(() => {
     document.body.dataset.theme = theme;
@@ -99,13 +92,19 @@ export default function App() {
   }, []); // run once on mount
 
   useEffect(() => {
-    try {
-      if (auth) localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
-      else localStorage.removeItem(AUTH_KEY);
-    } catch {
-      // ignore localStorage failures
-    }
+    if (auth) setAuthSession(auth);
+    else clearAuthSession();
   }, [auth]);
+
+  useEffect(() => {
+    function handleExpiry() {
+      setAuth(null);
+      setApiStatus(null);
+      setError("Your session expired. Please log in again.");
+    }
+    window.addEventListener("gw:session_expired", handleExpiry);
+    return () => window.removeEventListener("gw:session_expired", handleExpiry);
+  }, []);
 
   const [authMode, setAuthMode] = useState("register");
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
@@ -159,9 +158,15 @@ export default function App() {
       const newAuth = {
         worker_id: data.worker_id,
         name: workerForm.name,
+        email: workerForm.email,
         location: data.location,
         income: workerForm.income,
         active: data.active,
+        shield: data.shield || 0,
+        active_policy: data.active_policy || false,
+        weekly_earnings: data.weekly_earnings || 0,
+        access_token: data.access_token || "",
+        trust_score: data.trust_score || 100,
       };
       setAuth(newAuth);
       syncWorkerId(newAuth.worker_id, newAuth.location);
@@ -180,9 +185,15 @@ export default function App() {
       const newAuth = {
         worker_id: data.worker_id,
         name: data.name,
+        email: data.email,
         location: data.location,
         income: data.income,
         active: data.active,
+        shield: data.shield || 0,
+        active_policy: data.active_policy || false,
+        weekly_earnings: data.weekly_earnings || 0,
+        access_token: data.access_token || "",
+        trust_score: data.trust_score || 100,
       };
       setAuth(newAuth);
       syncWorkerId(newAuth.worker_id, newAuth.location);
@@ -289,6 +300,7 @@ export default function App() {
   const step5Done = !!payoutResult;
 
   function handleLogout() {
+    apiLogout();
     setAuth(null);
     setAuthMode("register");
     setWorkerId("");

@@ -1,6 +1,6 @@
-# Root .gitignore — Parametric Shield (backend + frontend + ml)
+# Combined .gitignore for repo root, backend, and frontend
 
-# ─── OS / Editor ──────────────────────────────────────────────
+# OS / editors
 .DS_Store
 Thumbs.db
 .idea/
@@ -8,62 +8,86 @@ Thumbs.db
 *.swp
 *.swo
 
-# ─── Python ───────────────────────────────────────────────────
+# Environment / secrets
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+*.pem
+*.key
+*.crt
+secrets.json
+*_secret*
+*_token*
+jwt_*.txt
+
+# Python / backend
 __pycache__/
 *.py[cod]
 *.pyd
 *.so
+*.egg
 *.egg-info/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 .coverage.*
 htmlcov/
-dist/
 build/
-*.egg
-backend/tests/
-
-# ─── Virtual Environments ─────────────────────────────────────
+dist/
 .venv/
 venv/
 env/
 ENV/
 .conda/
+backend/__pycache__/
+backend/.pytest_cache/
+backend/build/
+backend/dist/
+backend/*.log
+backend/*.pid
 
-# ─── Secrets / Environment Files ──────────────────────────────
-.env
-.env.*
-!.env.example
-*.pem
-*.key
-*.crt
-secrets.json
-
-# ─── JWT / Security ───────────────────────────────────────────
-# Never commit secret keys or token logs
-*_secret*
-*_token*
-jwt_*.txt
-
-# ─── Local Database Files ─────────────────────────────────────
+# Local databases
 *.db
 *.sqlite
 *.sqlite3
 *.sqlite-wal
 *.sqlite-shm
+backend/dev_hackathon.db
 **/dev.db
 **/test.db
 
-# ─── Frontend (React/Vite) ────────────────────────────────────
+# Frontend / Node
+node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/build/
-frontend/.env
-frontend/.env.*
+frontend/.vite/
+coverage/
+.nyc_output/
+.cache/
+.eslintcache
 
-# ─── ML Artifacts ─────────────────────────────────────────────
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+backend_server.out.log
+backend_server.err.log
+frontend_server.out.log
+frontend_server.err.log
+
+# ML / generated artifacts
 ml/__pycache__/
-ml/data.csv
 ml/*.pkl
 ml/*.joblib
 ml/*.sav
@@ -72,25 +96,7 @@ ml/*.h5
 ml/*.pt
 ml/*.onnx
 
-# ─── Node (any subproject) ────────────────────────────────────
-**/node_modules/
-**/dist/
-**/.next/
-**/out/
-
-# ─── Logs ─────────────────────────────────────────────────────
-*.log
-logs/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# ─── Coverage ─────────────────────────────────────────────────
-coverage/
-.nyc_output/
-
-# ─── Misc ─────────────────────────────────────────────────────
+# Misc
 *.bak
 *.tmp
 *.orig
-.cache/

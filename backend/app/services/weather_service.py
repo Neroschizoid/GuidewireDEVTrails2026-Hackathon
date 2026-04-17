@@ -1,5 +1,37 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
+
 import httpx
+
+OPEN_METEO_WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
+OPEN_METEO_AIR_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
+OPEN_METEO_GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
+
+
+@dataclass
+class ForecastPoint:
+    label: str
+    timestamp: str
+    rainfall: float
+    aqi: float
+    temperature: float
+
+
+@dataclass
+class WeatherSnapshot:
+    current_rainfall: float
+    current_aqi: float
+    current_us_aqi: float
+    current_temperature: float
+    next_24h_rainfall: float
+    next_24h_peak_aqi: float
+    forecast: list[ForecastPoint]
+    available: bool = True
+    error: Optional[str] = None
+
 
 def get_peak_hour() -> int:
     """
@@ -10,27 +42,159 @@ def get_peak_hour() -> int:
         return 1
     return 0
 
+
+def geocode_location(location: str) -> tuple[float, float]:
+    try:
+        response = httpx.get(
+            OPEN_METEO_GEOCODE_URL,
+            params={"name": location, "count": 1, "language": "en", "format": "json"},
+            timeout=10.0,
+        )
+        response.raise_for_status()
+        results = response.json().get("results") or []
+        if results:
+            item = results[0]
+            return float(item["latitude"]), float(item["longitude"])
+    except Exception as exc:
+        print(f"Geocoding Error: {exc}")
+
+    return 12.9716, 77.5946
+
+
+def _get_json_with_retry(url: str, params: dict, attempts: int = 3) -> dict:
+    last_error: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            response = httpx.get(url, params=params, timeout=10.0 + (attempt * 5.0))
+            response.raise_for_status()
+            return response.json()
+        except Exception as exc:
+            last_error = exc
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("Weather API request failed without an error.")
+
+
+def fetch_weather_snapshot(lat: float, lon: float) -> WeatherSnapshot:
+    weather_params = {
+        "latitude": lat,
+        "longitude": lon,
+        "current": "precipitation,temperature_2m",
+        "hourly": "precipitation,temperature_2m",
+        "timezone": "auto",
+        "forecast_days": 7,
+    }
+    air_params = {
+        "latitude": lat,
+        "longitude": lon,
+        "current": "european_aqi,us_aqi,pm2_5",
+        "hourly": "european_aqi,us_aqi,pm2_5",
+        "timezone": "auto",
+        "forecast_days": 7,
+    }
+
+    weather_data: dict = {}
+    air_data: dict = {}
+    errors: list[str] = []
+
+    try:
+        weather_data = _get_json_with_retry(OPEN_METEO_WEATHER_URL, weather_params)
+    except Exception as exc:
+        errors.append(f"weather feed unavailable: {exc}")
+
+    try:
+        air_data = _get_json_with_retry(OPEN_METEO_AIR_URL, air_params)
+    except Exception as exc:
+        errors.append(f"air quality feed unavailable: {exc}")
+
+    if not weather_data and not air_data:
+        error_message = "; ".join(errors) or "Weather feeds unavailable"
+        print(f"Weather API Error: {error_message}")
+        return WeatherSnapshot(
+            current_rainfall=0.0,
+            current_aqi=0.0,
+            current_us_aqi=0.0,
+            current_temperature=25.0,
+            next_24h_rainfall=0.0,
+            next_24h_peak_aqi=0.0,
+            forecast=[],
+            available=False,
+            error=error_message,
+        )
+
+    rainfall = float(weather_data.get("current", {}).get("precipitation", 0.0) or 0.0)
+    temp = float(weather_data.get("current", {}).get("temperature_2m", 25.0) or 25.0)
+    current_air = air_data.get("current", {}) or {}
+    aqi_eu = float(current_air.get("european_aqi", 0.0) or 0.0)
+    aqi_us = float(current_air.get("us_aqi", 0.0) or 0.0)
+    pm25 = float(current_air.get("pm2_5", 0.0) or 0.0)
+    aqi = max(aqi_eu, aqi_us, pm25 * 4.0)
+
+    weather_hourly = weather_data.get("hourly", {}) or {}
+    air_hourly = air_data.get("hourly", {}) or {}
+    hourly_times = (weather_hourly.get("time", []) or air_hourly.get("time", []) or [])[:24 * 7]
+    hourly_rain = weather_hourly.get("precipitation", []) or []
+    hourly_temp = weather_hourly.get("temperature_2m", []) or []
+    hourly_aqi_eu = air_hourly.get("european_aqi", []) or []
+    hourly_aqi_us = air_hourly.get("us_aqi", []) or []
+    hourly_pm25 = air_hourly.get("pm2_5", []) or []
+
+    points: list[ForecastPoint] = []
+    for idx, timestamp in enumerate(hourly_times):
+        point_rainfall = float(hourly_rain[idx]) if idx < len(hourly_rain) and hourly_rain[idx] is not None else 0.0
+        point_temp = float(hourly_temp[idx]) if idx < len(hourly_temp) and hourly_temp[idx] is not None else temp
+        point_aqi = max(
+            float(hourly_aqi_eu[idx]) if idx < len(hourly_aqi_eu) and hourly_aqi_eu[idx] is not None else 0.0,
+            float(hourly_aqi_us[idx]) if idx < len(hourly_aqi_us) and hourly_aqi_us[idx] is not None else 0.0,
+            (float(hourly_pm25[idx]) * 4.0) if idx < len(hourly_pm25) and hourly_pm25[idx] is not None else 0.0,
+        )
+        points.append(
+            ForecastPoint(
+                label=timestamp[5:10],
+                timestamp=timestamp,
+                rainfall=point_rainfall,
+                aqi=point_aqi or aqi,
+                temperature=point_temp,
+            )
+        )
+
+    daily_points: list[ForecastPoint] = []
+    for start in range(0, len(points), 24):
+        chunk = points[start:start + 24]
+        if not chunk:
+            continue
+        daily_points.append(
+            ForecastPoint(
+                label=chunk[0].timestamp[5:10],
+                timestamp=chunk[0].timestamp,
+                rainfall=sum(item.rainfall for item in chunk),
+                aqi=max(item.aqi for item in chunk),
+                temperature=sum(item.temperature for item in chunk) / len(chunk),
+            )
+        )
+
+    next_day = points[:24]
+    next_24h_rainfall = sum(item.rainfall for item in next_day)
+    next_24h_peak_aqi = max((item.aqi for item in next_day), default=aqi)
+    partial_error = "; ".join(errors) or None
+
+    return WeatherSnapshot(
+        current_rainfall=rainfall,
+        current_aqi=aqi,
+        current_us_aqi=aqi_us,
+        current_temperature=temp,
+        next_24h_rainfall=next_24h_rainfall,
+        next_24h_peak_aqi=next_24h_peak_aqi,
+        forecast=daily_points,
+        available=True,
+        error=partial_error,
+    )
+
+
 def fetch_live_weather(lat: float, lon: float) -> tuple[float, float, float]:
     """
     Fetches real-time weather and air quality from Open-Meteo.
     Returns (rainfall_mm, aqi, temperature_c).
     """
-    try:
-        # Weather API for precipitation and temperature
-        weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=precipitation,temperature_2m&timezone=auto"
-        weather_res = httpx.get(weather_url, timeout=10.0)
-        weather_data = weather_res.json()
-        rainfall = weather_data.get("current", {}).get("precipitation", 0.0)
-        temp = weather_data.get("current", {}).get("temperature_2m", 25.0)
-
-        # Air Quality API for European AQI
-        aqi_url = f"https://air-quality-api.open-meteo.com/v1/air-quality?latitude={lat}&longitude={lon}&current=european_aqi&timezone=auto"
-        aqi_res = httpx.get(aqi_url, timeout=10.0)
-        aqi_data = aqi_res.json()
-        aqi = aqi_data.get("current", {}).get("european_aqi", 20.0)
-
-        return float(rainfall), float(aqi), float(temp)
-    except Exception as e:
-        print(f"Weather API Error: {e}")
-        # Default fallback values if the API fails
-        return 0.0, 50.0, 25.0
+    snapshot = fetch_weather_snapshot(lat, lon)
+    return snapshot.current_rainfall, snapshot.current_aqi, snapshot.current_temperature

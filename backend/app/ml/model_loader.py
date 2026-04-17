@@ -73,16 +73,16 @@ def load_model() -> SimpleRiskModel | LoadedRiskModel:
     model_path = os.getenv("MODEL_PATH")
     if model_path and os.path.exists(model_path):
         if joblib is None:
-            print("⚠️ joblib not installed. Falling back to SimpleRiskModel.")
+            print("WARNING: joblib not installed. Falling back to SimpleRiskModel.")
             return SimpleRiskModel()
         try:
             loaded = joblib.load(model_path)
-            print(f"✅ Loaded ML Model from: {model_path}")
+            print(f"SUCCESS: Loaded ML Model from: {model_path}")
             _CACHED_MODEL = LoadedRiskModel(model=loaded)
             return _CACHED_MODEL
         except Exception as e:
-            print(f"❌ Error loading model from {model_path}: {e}")
+            print(f"ERROR: Error loading model from {model_path}: {e}")
             return SimpleRiskModel()
 
-    print("⚠️ MODEL_PATH not found. Using SimpleRiskModel fallback.")
+    print("WARNING: MODEL_PATH not found. Using SimpleRiskModel fallback.")
     return SimpleRiskModel()

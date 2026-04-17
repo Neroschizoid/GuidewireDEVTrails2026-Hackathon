@@ -29,6 +29,15 @@ class WorkerDB(Base):
     income: Mapped[float] = mapped_column(Float, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     shield: Mapped[int] = mapped_column(ForeignKey("shields.p_id"), default=0, nullable=False)
+    trust_score: Mapped[float] = mapped_column(Float, default=100.0, nullable=False)
+    two_factor_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    two_factor_secret: Mapped[str | None] = mapped_column(String, nullable=True)
+    bank_account_holder: Mapped[str | None] = mapped_column(String, nullable=True)
+    bank_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    bank_account_number: Mapped[str | None] = mapped_column(String, nullable=True)
+    bank_ifsc: Mapped[str | None] = mapped_column(String, nullable=True)
+    bank_account_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    preferred_payout_gateway: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
 class RiskProfileDB(Base):
@@ -47,6 +56,9 @@ class PolicyDB(Base):
     start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[str] = mapped_column(String, default="active", nullable=False)
+    payment_gateway: Mapped[str | None] = mapped_column(String, nullable=True)
+    payment_reference: Mapped[str | None] = mapped_column(String, nullable=True)
+    payment_status: Mapped[str] = mapped_column(String, default="captured", nullable=False)
 
 
 class EventDB(Base):
@@ -70,6 +82,14 @@ class PayoutDB(Base):
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, default="processed")
     idempotency_key: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    fraud_score: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    fraud_reason: Mapped[str] = mapped_column(String, nullable=True)
+    is_flagged: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    payout_gateway: Mapped[str | None] = mapped_column(String, nullable=True)
+    payout_reference: Mapped[str | None] = mapped_column(String, nullable=True)
+    transfer_status: Mapped[str] = mapped_column(String, default="queued", nullable=False)
+    beneficiary_masked: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class WorkerSessionDB(Base):
@@ -79,6 +99,9 @@ class WorkerSessionDB(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String, default="active", nullable=False)  # active | ended
+    last_lat: Mapped[float] = mapped_column(Float, nullable=True)
+    last_lon: Mapped[float] = mapped_column(Float, nullable=True)
+    last_ping_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class TriggerStateDB(Base):

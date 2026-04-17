@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
@@ -19,4 +19,6 @@ def risk_calculate(
     db: Session = Depends(get_db),
     current_worker: WorkerDB = Depends(get_current_worker)
 ) -> RiskResponse:
+    if current_worker.id != payload.worker_id:
+        raise HTTPException(status_code=403, detail="Access denied")
     return calculate_risk(payload, db)
