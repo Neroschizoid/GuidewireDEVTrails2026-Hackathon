@@ -5,6 +5,11 @@ from datetime import datetime
 from typing import Optional
 
 import httpx
+import time
+
+# ✅ CACHE SETUP
+_weather_cache = {}
+CACHE_TTL = 300  # 5 minutes
 
 OPEN_METEO_WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
 OPEN_METEO_AIR_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
@@ -34,9 +39,6 @@ class WeatherSnapshot:
 
 
 def get_peak_hour() -> int:
-    """
-    Returns 1 if current local hour is in the peak window (8-11 or 17-22), else 0.
-    """
     hour = datetime.now().hour
     if 8 <= hour <= 11 or 17 <= hour <= 22:
         return 1
@@ -70,12 +72,22 @@ def _get_json_with_retry(url: str, params: dict, attempts: int = 3) -> dict:
             return response.json()
         except Exception as exc:
             last_error = exc
+            time.sleep(2 ** attempt)  # ✅ backoff added
     if last_error is not None:
         raise last_error
     raise RuntimeError("Weather API request failed without an error.")
 
 
 def fetch_weather_snapshot(lat: float, lon: float) -> WeatherSnapshot:
+    key = f"{lat},{lon}"
+    now = time.time()
+
+    # ✅ RETURN FROM CACHE
+    if key in _weather_cache:
+        cached = _weather_cache[key]
+        if now - cached["time"] < CACHE_TTL:
+            return cached["data"]
+
     weather_params = {
         "latitude": lat,
         "longitude": lon,
@@ -84,6 +96,7 @@ def fetch_weather_snapshot(lat: float, lon: float) -> WeatherSnapshot:
         "timezone": "auto",
         "forecast_days": 7,
     }
+
     air_params = {
         "latitude": lat,
         "longitude": lon,
@@ -110,7 +123,7 @@ def fetch_weather_snapshot(lat: float, lon: float) -> WeatherSnapshot:
     if not weather_data and not air_data:
         error_message = "; ".join(errors) or "Weather feeds unavailable"
         print(f"Weather API Error: {error_message}")
-        return WeatherSnapshot(
+        result = WeatherSnapshot(
             current_rainfall=0.0,
             current_aqi=0.0,
             current_us_aqi=0.0,
@@ -121,9 +134,12 @@ def fetch_weather_snapshot(lat: float, lon: float) -> WeatherSnapshot:
             available=False,
             error=error_message,
         )
+        _weather_cache[key] = {"data": result, "time": now}
+        return result
 
     rainfall = float(weather_data.get("current", {}).get("precipitation", 0.0) or 0.0)
     temp = float(weather_data.get("current", {}).get("temperature_2m", 25.0) or 25.0)
+
     current_air = air_data.get("current", {}) or {}
     aqi_eu = float(current_air.get("european_aqi", 0.0) or 0.0)
     aqi_us = float(current_air.get("us_aqi", 0.0) or 0.0)
@@ -132,22 +148,27 @@ def fetch_weather_snapshot(lat: float, lon: float) -> WeatherSnapshot:
 
     weather_hourly = weather_data.get("hourly", {}) or {}
     air_hourly = air_data.get("hourly", {}) or {}
+
     hourly_times = (weather_hourly.get("time", []) or air_hourly.get("time", []) or [])[:24 * 7]
     hourly_rain = weather_hourly.get("precipitation", []) or []
     hourly_temp = weather_hourly.get("temperature_2m", []) or []
+
     hourly_aqi_eu = air_hourly.get("european_aqi", []) or []
     hourly_aqi_us = air_hourly.get("us_aqi", []) or []
     hourly_pm25 = air_hourly.get("pm2_5", []) or []
 
     points: list[ForecastPoint] = []
+
     for idx, timestamp in enumerate(hourly_times):
         point_rainfall = float(hourly_rain[idx]) if idx < len(hourly_rain) and hourly_rain[idx] is not None else 0.0
         point_temp = float(hourly_temp[idx]) if idx < len(hourly_temp) and hourly_temp[idx] is not None else temp
+
         point_aqi = max(
             float(hourly_aqi_eu[idx]) if idx < len(hourly_aqi_eu) and hourly_aqi_eu[idx] is not None else 0.0,
             float(hourly_aqi_us[idx]) if idx < len(hourly_aqi_us) and hourly_aqi_us[idx] is not None else 0.0,
             (float(hourly_pm25[idx]) * 4.0) if idx < len(hourly_pm25) and hourly_pm25[idx] is not None else 0.0,
         )
+
         points.append(
             ForecastPoint(
                 label=timestamp[5:10],
@@ -159,10 +180,12 @@ def fetch_weather_snapshot(lat: float, lon: float) -> WeatherSnapshot:
         )
 
     daily_points: list[ForecastPoint] = []
+
     for start in range(0, len(points), 24):
         chunk = points[start:start + 24]
         if not chunk:
             continue
+
         daily_points.append(
             ForecastPoint(
                 label=chunk[0].timestamp[5:10],
@@ -176,9 +199,10 @@ def fetch_weather_snapshot(lat: float, lon: float) -> WeatherSnapshot:
     next_day = points[:24]
     next_24h_rainfall = sum(item.rainfall for item in next_day)
     next_24h_peak_aqi = max((item.aqi for item in next_day), default=aqi)
+
     partial_error = "; ".join(errors) or None
 
-    return WeatherSnapshot(
+    result = WeatherSnapshot(
         current_rainfall=rainfall,
         current_aqi=aqi,
         current_us_aqi=aqi_us,
@@ -190,11 +214,12 @@ def fetch_weather_snapshot(lat: float, lon: float) -> WeatherSnapshot:
         error=partial_error,
     )
 
+    # ✅ SAVE TO CACHE
+    _weather_cache[key] = {"data": result, "time": now}
+
+    return result
+
 
 def fetch_live_weather(lat: float, lon: float) -> tuple[float, float, float]:
-    """
-    Fetches real-time weather and air quality from Open-Meteo.
-    Returns (rainfall_mm, aqi, temperature_c).
-    """
     snapshot = fetch_weather_snapshot(lat, lon)
     return snapshot.current_rainfall, snapshot.current_aqi, snapshot.current_temperature
